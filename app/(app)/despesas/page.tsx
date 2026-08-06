@@ -15,38 +15,38 @@ export default async function DespesasPage() {
 
   return (
     <div className="flex w-full max-w-2xl flex-col gap-4">
-      <h1 className="font-display glow-text text-2xl font-bold tracking-wide">Despesas</h1>
+      <h1 className="font-outfit text-2xl font-bold tracking-tight text-black">Despesas</h1>
 
       <ExpenseForm />
 
       <div className="hud-panel flex flex-col gap-2 rounded-sm p-4">
-        <div className="flex items-center justify-between border-b border-red-500/20 pb-2 text-sm text-zinc-400">
+        <div className="flex items-center justify-between border-b border-black/10 pb-2 text-sm text-zinc-500">
           <span>Total</span>
-          <span className="text-zinc-100">
+          <span className="text-zinc-900">
             R$ {total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
           </span>
         </div>
 
         {expenses.length === 0 ? (
-          <p className="py-6 text-center text-sm text-zinc-600">
+          <p className="py-6 text-center text-sm text-zinc-500">
             Nenhuma despesa registrada.
           </p>
         ) : (
-          <ul className="flex flex-col divide-y divide-red-500/10">
+          <ul className="flex flex-col divide-y divide-black/5">
             {expenses.map((expense) => (
               <li
                 key={expense.id}
                 className="flex items-center justify-between gap-3 py-3 text-sm"
               >
                 <div>
-                  <p className="text-zinc-200">{expense.description}</p>
+                  <p className="text-zinc-800">{expense.description}</p>
                   <p className="text-xs text-zinc-500">
                     {expense.category} ·{" "}
                     {new Date(expense.created_at).toLocaleDateString("pt-BR")}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-zinc-200">
+                  <span className="text-zinc-800">
                     R${" "}
                     {Number(expense.amount).toLocaleString("pt-BR", {
                       minimumFractionDigits: 2,
@@ -55,7 +55,7 @@ export default async function DespesasPage() {
                   <form action={deleteExpense.bind(null, expense.id)}>
                     <button
                       type="submit"
-                      className="text-xs text-red-400 hover:text-red-300"
+                      className="text-xs text-red-600 hover:text-red-700"
                     >
                       Excluir
                     </button>

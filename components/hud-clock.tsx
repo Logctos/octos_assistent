@@ -24,6 +24,6 @@ export function HudClock() {
   if (!time) return null;
 
   return (
-    <span className="font-mono text-xs tabular-nums text-red-400/70">{time}</span>
+    <span className="font-mono text-xs tabular-nums text-[#0084FF]/70">{time}</span>
   );
 }

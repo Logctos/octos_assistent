@@ -18,7 +18,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="flex flex-1 flex-col items-center gap-8 bg-black px-6 py-10 font-sans">
+    <div className="flex flex-1 flex-col items-center gap-8 bg-white px-6 py-10 font-inter">
       <AppHeader userEmail={user?.email} googleCalendarConnected={googleCalendarConnected} />
       <div className="flex w-full flex-1 flex-col items-center">{children}</div>
     </div>

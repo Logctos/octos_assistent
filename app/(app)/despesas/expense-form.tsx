@@ -22,7 +22,7 @@ export function ExpenseForm() {
           name="description"
           required
           disabled={isPending}
-          className="hud-input rounded-sm px-3 py-2 text-sm text-zinc-200 disabled:cursor-not-allowed"
+          className="hud-input rounded-sm px-3 py-2 text-sm text-zinc-900 disabled:cursor-not-allowed"
         />
       </div>
 
@@ -38,7 +38,7 @@ export function ExpenseForm() {
           min="0.01"
           required
           disabled={isPending}
-          className="hud-input rounded-sm px-3 py-2 text-sm text-zinc-200 disabled:cursor-not-allowed"
+          className="hud-input rounded-sm px-3 py-2 text-sm text-zinc-900 disabled:cursor-not-allowed"
         />
       </div>
 
@@ -51,7 +51,7 @@ export function ExpenseForm() {
           name="category"
           required
           disabled={isPending}
-          className="hud-input rounded-sm px-3 py-2 text-sm text-zinc-200 disabled:cursor-not-allowed"
+          className="hud-input rounded-sm px-3 py-2 text-sm text-zinc-900 disabled:cursor-not-allowed"
         />
       </div>
 
@@ -60,7 +60,7 @@ export function ExpenseForm() {
       </button>
 
       {state.error && (
-        <p className="text-sm text-red-400 sm:basis-full">{state.error}</p>
+        <p className="text-sm text-red-600 sm:basis-full">{state.error}</p>
       )}
     </form>
   );

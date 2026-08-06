@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Bot } from "lucide-react";
 import { LogoutButton } from "@/components/logout-button";
 import { HudClock } from "@/components/hud-clock";
 import { ConnectGoogleCalendarButton } from "@/components/connect-google-calendar-button";
@@ -24,11 +25,9 @@ export function AppHeader({
   return (
     <header className="flex w-full max-w-2xl items-center justify-between text-sm">
       <div className="flex items-center gap-6">
-        <Link href="/app" className="flex items-center gap-2">
-          <span className="arc-reactor" />
-          <span className="font-display glow-text text-sm font-bold tracking-widest">
-            OCTOS
-          </span>
+        <Link href="/app" className="font-fustat flex items-center gap-2 text-lg font-extrabold tracking-tight text-black">
+          <Bot className="h-5 w-5 text-[#0084FF]" />
+          Octos.
         </Link>
         <nav className="flex gap-4">
           {NAV_ITEMS.map((item) => (
@@ -37,8 +36,8 @@ export function AppHeader({
               href={item.href}
               className={
                 pathname === item.href
-                  ? "text-red-300"
-                  : "text-zinc-500 hover:text-zinc-300"
+                  ? "font-medium text-[#0084FF]"
+                  : "text-zinc-500 hover:text-zinc-900"
               }
             >
               {item.label}
@@ -48,8 +47,8 @@ export function AppHeader({
       </div>
       <div className="flex items-center gap-4">
         <div className="hidden items-center gap-2 sm:flex">
-          <span className="h-1.5 w-1.5 rounded-full bg-red-400 shadow-[0_0_6px_2px_rgba(239,68,68,0.7)]" />
-          <span className="font-mono text-xs tracking-widest text-red-400/70">ONLINE</span>
+          <span className="arc-reactor" />
+          <span className="font-mono text-xs tracking-widest text-[#0084FF]/70">ONLINE</span>
           <HudClock />
         </div>
         {userEmail && <ConnectGoogleCalendarButton connected={Boolean(googleCalendarConnected)} />}

@@ -5,6 +5,7 @@ import type { ChatMessage } from "@/types";
 import { useSpeechRecognition } from "@/lib/hooks/use-speech-recognition";
 import { useSpeechSynthesis } from "@/lib/hooks/use-speech-synthesis";
 import { OctosAvatar } from "@/components/octos-avatar";
+import { JarvisFrame } from "@/components/jarvis-frame";
 import { DateTile, WeatherTile, ActivitiesTile, AgentsTile } from "@/components/hud-tiles";
 
 const API_KEY_STORAGE_KEY = "octos:openai-api-key";
@@ -181,11 +182,13 @@ export function ChatPanel({
           <WeatherTile />
         </div>
 
-        <div className="avatar-frame flex flex-col items-center justify-center gap-3 py-6">
+        <div className="flex flex-col items-center justify-center gap-3 py-6">
           <span className="arc-reactor" />
-          <OctosAvatar status={avatarStatus} size={260} />
-          <h1 className="font-display glow-text text-3xl font-bold tracking-widest">OCTOS</h1>
-          <span className="font-mono text-xs tracking-widest text-red-400/70">
+          <JarvisFrame>
+            <OctosAvatar size={220} />
+          </JarvisFrame>
+          <h1 className="font-fustat text-3xl font-extrabold tracking-tight text-black">Octos.</h1>
+          <span className="font-mono text-xs tracking-widest text-[#0084FF]/70">
             {statusLabel.toUpperCase()}
           </span>
         </div>
@@ -198,7 +201,7 @@ export function ChatPanel({
 
       <div className="hud-panel flex w-full flex-col gap-3 rounded-sm p-4">
         <div className="flex items-center justify-between">
-          <span className="text-xs text-zinc-600">
+          <span className="text-xs text-zinc-500">
             {apiKey ? "Chave da OpenAI configurada" : "Chave da OpenAI não configurada"} ·{" "}
             {messages.length} mensagens
           </span>
@@ -236,14 +239,14 @@ export function ChatPanel({
               value={apiKey}
               onChange={(e) => handleApiKeyChange(e.target.value)}
               placeholder="sk-..."
-              className="hud-input rounded-sm px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-700"
+              className="hud-input rounded-sm px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400"
             />
           </div>
         )}
 
         <div className="hud-panel flex h-72 flex-col gap-3 overflow-y-auto rounded-sm p-4">
           {messages.length === 0 && (
-            <p className="m-auto text-center text-sm text-zinc-600">
+            <p className="m-auto text-center text-sm text-zinc-500">
               Envie uma mensagem para começar.
             </p>
           )}
@@ -252,8 +255,8 @@ export function ChatPanel({
               key={message.id}
               className={`max-w-[80%] rounded px-3 py-2 text-sm ${
                 message.role === "user"
-                  ? "ml-auto border border-red-500/40 bg-red-950/60 text-red-50 shadow-[0_0_14px_-6px_rgba(239,68,68,0.6)]"
-                  : "mr-auto bg-zinc-900/80 text-zinc-200"
+                  ? "ml-auto border border-[#0084FF]/20 bg-[#0084FF]/8 text-[#0066cc]"
+                  : "mr-auto bg-zinc-100 text-zinc-800"
               }`}
             >
               {message.content || (message.role === "assistant" && isLoading ? "…" : "")}
@@ -262,7 +265,7 @@ export function ChatPanel({
           <div ref={bottomRef} />
         </div>
 
-        {error && <p className="text-sm text-red-400">{error}</p>}
+        {error && <p className="text-sm text-red-600">{error}</p>}
 
         <form onSubmit={handleSubmit} className="flex items-center gap-2">
           {isSpeechInputSupported && (
@@ -272,7 +275,7 @@ export function ChatPanel({
               aria-label={isListening ? "Parar de ouvir" : "Falar"}
               className={
                 isListening
-                  ? "animate-pulse rounded-sm border border-red-800 bg-red-950 px-3 py-2 text-sm text-red-200"
+                  ? "animate-pulse rounded-sm border border-[#0084FF]/40 bg-[#0084FF]/10 px-3 py-2 text-sm text-[#0066cc]"
                   : "hud-button rounded-sm px-3 py-2 text-sm"
               }
             >
@@ -284,7 +287,7 @@ export function ChatPanel({
             onChange={(e) => setInput(e.target.value)}
             disabled={isLoading}
             placeholder={isListening ? "Ouvindo…" : "Fale com o Octos…"}
-            className="hud-input flex-1 rounded-sm px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-700 disabled:cursor-not-allowed"
+            className="hud-input flex-1 rounded-sm px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 disabled:cursor-not-allowed"
           />
           <button
             type="submit"

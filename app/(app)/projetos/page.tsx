@@ -39,7 +39,7 @@ export default async function ProjetosPage() {
 
   return (
     <div className="flex w-full max-w-2xl flex-col gap-4">
-      <h1 className="font-display glow-text text-2xl font-bold tracking-wide">Projetos</h1>
+      <h1 className="font-outfit text-2xl font-bold tracking-tight text-black">Projetos</h1>
 
       <GoogleCalendarPanel
         connected={calendarConnected}
@@ -51,18 +51,18 @@ export default async function ProjetosPage() {
 
       <div className="hud-panel flex flex-col gap-2 rounded-sm p-4">
         {projects.length === 0 ? (
-          <p className="py-6 text-center text-sm text-zinc-600">
+          <p className="py-6 text-center text-sm text-zinc-500">
             Nenhum projeto cadastrado.
           </p>
         ) : (
-          <ul className="flex flex-col divide-y divide-red-500/10">
+          <ul className="flex flex-col divide-y divide-black/5">
             {projects.map((project) => (
               <li
                 key={project.id}
                 className="flex items-center justify-between gap-3 py-3 text-sm"
               >
                 <div>
-                  <p className="text-zinc-200">{project.name}</p>
+                  <p className="text-zinc-800">{project.name}</p>
                   {project.description && (
                     <p className="text-xs text-zinc-500">{project.description}</p>
                   )}
@@ -72,7 +72,7 @@ export default async function ProjetosPage() {
                   <form action={deleteProject.bind(null, project.id)}>
                     <button
                       type="submit"
-                      className="text-xs text-red-400 hover:text-red-300"
+                      className="text-xs text-red-600 hover:text-red-700"
                     >
                       Excluir
                     </button>

@@ -47,7 +47,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="pt-BR"
       className={`${geistSans.variable} ${geistMono.variable} ${orbitron.variable} ${outfit.variable} ${fustat.variable} ${inter.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-black text-zinc-50">{children}</body>
+      <body className="min-h-full flex flex-col bg-white text-zinc-900">{children}</body>
     </html>
   );
 }
