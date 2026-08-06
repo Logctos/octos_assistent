@@ -1,0 +1,237 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-orbitron);
+}
+
+/* Marketing-page-only type system (kept separate from the app's --font-sans/--font-display) */
+.font-outfit {
+  font-family: var(--font-outfit), sans-serif;
+}
+.font-fustat {
+  font-family: var(--font-fustat), sans-serif;
+}
+.font-inter {
+  font-family: var(--font-inter), sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+  background-image:
+    radial-gradient(circle at 50% 0%, rgb(239 68 68 / 0.07), transparent 60%),
+    repeating-linear-gradient(
+      0deg,
+      rgb(239 68 68 / 0.025) 0px,
+      rgb(239 68 68 / 0.025) 1px,
+      transparent 1px,
+      transparent 3px
+    ),
+    /* faint hexagon grid, à la Ultron HUD wallpapers */
+    linear-gradient(30deg, rgb(239 68 68 / 0.035) 12%, transparent 12.5%, transparent 87%, rgb(239 68 68 / 0.035) 87.5%, rgb(239 68 68 / 0.035)),
+    linear-gradient(150deg, rgb(239 68 68 / 0.035) 12%, transparent 12.5%, transparent 87%, rgb(239 68 68 / 0.035) 87.5%, rgb(239 68 68 / 0.035)),
+    linear-gradient(30deg, rgb(239 68 68 / 0.035) 12%, transparent 12.5%, transparent 87%, rgb(239 68 68 / 0.035) 87.5%, rgb(239 68 68 / 0.035)),
+    linear-gradient(150deg, rgb(239 68 68 / 0.035) 12%, transparent 12.5%, transparent 87%, rgb(239 68 68 / 0.035) 87.5%, rgb(239 68 68 / 0.035)),
+    linear-gradient(60deg, rgb(239 68 68 / 0.05) 25%, transparent 25.5%, transparent 75%, rgb(239 68 68 / 0.05) 75%, rgb(239 68 68 / 0.05)),
+    linear-gradient(60deg, rgb(239 68 68 / 0.05) 25%, transparent 25.5%, transparent 75%, rgb(239 68 68 / 0.05) 75%, rgb(239 68 68 / 0.05));
+  background-size:
+    100% 100%,
+    100% 100%,
+    56px 98px, 56px 98px, 56px 98px, 56px 98px, 56px 98px, 56px 98px;
+  background-position:
+    0 0,
+    0 0,
+    0 0, 0 0, 28px 49px, 28px 49px, 0 0, 28px 49px;
+  background-attachment: fixed;
+}
+
+/* HUD panel: translucent red border + glow + corner brackets, à la Iron Man HUD */
+.hud-panel {
+  position: relative;
+  border: 1px solid rgb(239 68 68 / 0.25);
+  background-color: rgb(8 10 12 / 0.7);
+  box-shadow:
+    0 0 24px -10px rgb(239 68 68 / 0.45),
+    inset 0 1px 0 rgb(239 68 68 / 0.08);
+}
+
+.hud-panel::before,
+.hud-panel::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 1px solid rgb(239 68 68 / 0.7);
+  pointer-events: none;
+}
+
+.hud-panel::before {
+  top: -1px;
+  left: -1px;
+  border-right: none;
+  border-bottom: none;
+}
+
+.hud-panel::after {
+  bottom: -1px;
+  right: -1px;
+  border-left: none;
+  border-top: none;
+}
+
+/* HUD button: red outline, glows on hover/focus */
+.hud-button {
+  border: 1px solid rgb(239 68 68 / 0.3);
+  color: rgb(254 202 202);
+  transition:
+    box-shadow 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+}
+
+.hud-button:hover:not(:disabled),
+.hud-button:focus-visible:not(:disabled) {
+  border-color: rgb(239 68 68 / 0.8);
+  box-shadow: 0 0 14px -2px rgb(239 68 68 / 0.55);
+  color: rgb(254 226 226);
+}
+
+.hud-button:disabled {
+  opacity: 0.4;
+}
+
+/* HUD input: subtle red border, brighter on focus */
+.hud-input {
+  border: 1px solid rgb(239 68 68 / 0.2);
+  background-color: rgb(0 0 0 / 0.6);
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.hud-input:focus-visible {
+  outline: none;
+  border-color: rgb(239 68 68 / 0.7);
+  box-shadow: 0 0 10px -3px rgb(239 68 68 / 0.5);
+}
+
+.hud-input:disabled {
+  opacity: 0.5;
+}
+
+/* Glowing brand/heading text */
+.glow-text {
+  color: rgb(248 113 113);
+  text-shadow:
+    0 0 8px rgb(239 68 68 / 0.65),
+    0 0 24px rgb(239 68 68 / 0.3);
+}
+
+/* Arc-reactor style pulsing indicator */
+.arc-reactor {
+  position: relative;
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  background: rgb(239 68 68);
+  box-shadow: 0 0 10px 2px rgb(239 68 68 / 0.8);
+}
+
+.arc-reactor::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 9999px;
+  border: 1px solid rgb(239 68 68 / 0.45);
+  animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.arc-reactor::after {
+  content: "";
+  position: absolute;
+  inset: -15px;
+  border-radius: 9999px;
+  border: 1px dashed rgb(239 68 68 / 0.35);
+  animation: spin 7s linear infinite;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.9);
+    opacity: 0;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Soft glow backdrop framing the avatar */
+.avatar-frame {
+  position: relative;
+}
+
+.avatar-frame::before {
+  content: "";
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: 340px;
+  height: 340px;
+  transform: translate(-50%, -50%);
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgb(239 68 68 / 0.16), transparent 70%);
+  filter: blur(4px);
+  pointer-events: none;
+  transition: background 300ms ease;
+}
+
+.avatar-frame::after {
+  content: "";
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: 400px;
+  height: 400px;
+  transform: translate(-50%, -50%);
+  border-radius: 9999px;
+  border: 1px dashed rgb(239 68 68 / 0.25);
+  pointer-events: none;
+  animation: spin 40s linear infinite;
+}
+
+.avatar-frame:has(.octos-avatar[data-status="speaking"])::before,
+.avatar-frame:has(.octos-avatar[data-status="thinking"])::before {
+  background: radial-gradient(circle, rgb(239 68 68 / 0.3), transparent 70%);
+}
+
+.avatar-frame:has(.octos-avatar[data-status="speaking"])::after,
+.avatar-frame:has(.octos-avatar[data-status="thinking"])::after {
+  border-color: rgb(239 68 68 / 0.5);
+  animation-duration: 10s;
+}
+
+/* Octos avatar: WebGL (Three.js) robot bust — animation is driven in JS,
+   this class + data-status only remain as a CSS hook for .avatar-frame. */
+.octos-avatar canvas {
+  display: block;
+}
