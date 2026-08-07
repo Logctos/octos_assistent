@@ -41,9 +41,18 @@ create table if not exists google_calendar_connections (
   connected_at timestamptz not null default now()
 );
 
+create table if not exists chat_messages (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  role text not null check (role in ('user', 'assistant')),
+  content text not null,
+  created_at timestamptz not null default now()
+);
+
 alter table expenses enable row level security;
 alter table projects enable row level security;
 alter table google_calendar_connections enable row level security;
+alter table chat_messages enable row level security;
 
 create policy "Users can select their own expenses"
   on expenses for select
@@ -94,4 +103,21 @@ create policy "Users can update their own google calendar connection"
 
 create policy "Users can delete their own google calendar connection"
   on google_calendar_connections for delete
+  using (auth.uid() = user_id);
+
+create policy "Users can select their own chat messages"
+  on chat_messages for select
+  using (auth.uid() = user_id);
+
+create policy "Users can insert their own chat messages"
+  on chat_messages for insert
+  with check (auth.uid() = user_id);
+
+create policy "Users can update their own chat messages"
+  on chat_messages for update
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create policy "Users can delete their own chat messages"
+  on chat_messages for delete
   using (auth.uid() = user_id);

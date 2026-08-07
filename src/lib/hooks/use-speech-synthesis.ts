@@ -23,14 +23,17 @@ export function useSpeechSynthesis() {
     return () => document.removeEventListener("pointerdown", unlock);
   }, [isSupported]);
 
-  function speak(text: string, lang = "pt-BR") {
+  function speak(text: string, lang = "pt-BR", onEnd?: () => void) {
     if (!isSupported || !text) return;
 
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = lang;
     utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      onEnd?.();
+    };
     utterance.onerror = () => setIsSpeaking(false);
     // Some Chrome/Android builds garbage-collect the utterance mid-speech if nothing
     // outside this function keeps a reference to it, cutting audio off randomly.

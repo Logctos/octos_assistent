@@ -7,9 +7,12 @@ import { JarvisFrame } from "@/components/jarvis-frame";
 import { DateTile, WeatherTile, NewsTile, ActivitiesTile, AgentsTile } from "@/components/hud-tiles";
 import type { NewsItem } from "@/lib/tech-news";
 import { runChat } from "@/features/chat/run-chat";
+import { loadChatHistory, saveChatMessage } from "@/features/chat/api";
 
 const API_KEY_STORAGE_KEY = "octos:openai-api-key";
 const VOICE_ENABLED_STORAGE_KEY = "octos:voice-enabled";
+const HANDS_FREE_STORAGE_KEY = "octos:hands-free";
+const MODEL_HISTORY_LIMIT = 20;
 
 interface Activity {
   label: string;
@@ -41,6 +44,9 @@ export function ChatPanel({
   const [voiceEnabled, setVoiceEnabled] = useState(
     () => localStorage.getItem(VOICE_ENABLED_STORAGE_KEY) !== "false"
   );
+  const [handsFreeEnabled, setHandsFreeEnabled] = useState(
+    () => localStorage.getItem(HANDS_FREE_STORAGE_KEY) === "true"
+  );
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const {
@@ -56,6 +62,12 @@ export function ChatPanel({
         if (isFinal) sendMessage(transcript);
       },
     });
+
+  useEffect(() => {
+    loadChatHistory().then((history) => {
+      if (history.length > 0) setMessages(history);
+    });
+  }, []);
 
   const lastMessage = messages[messages.length - 1];
   const isStreamingResponse =
@@ -90,6 +102,13 @@ export function ChatPanel({
     if (!next) cancelSpeech();
   }
 
+  function handleHandsFreeToggle() {
+    const next = !handsFreeEnabled;
+    setHandsFreeEnabled(next);
+    localStorage.setItem(HANDS_FREE_STORAGE_KEY, String(next));
+    if (!next) stopListening();
+  }
+
   async function sendMessage(content: string) {
     const trimmed = content.trim();
     if (!trimmed || isLoading) return;
@@ -114,12 +133,13 @@ export function ChatPanel({
     const history = [...messages, userMessage];
     setMessages([...history, assistantMessage]);
     setIsLoading(true);
+    saveChatMessage("user", trimmed);
 
     try {
       let assistantContent = "";
 
       await runChat(
-        history.map(({ role, content }) => ({ role, content })),
+        history.slice(-MODEL_HISTORY_LIMIT).map(({ role, content }) => ({ role, content })),
         apiKey,
         (chunk) => {
           assistantContent += chunk;
@@ -131,7 +151,10 @@ export function ChatPanel({
         }
       );
 
-      if (voiceEnabled) speak(assistantContent);
+      saveChatMessage("assistant", assistantContent);
+      if (voiceEnabled) {
+        speak(assistantContent, "pt-BR", handsFreeEnabled ? startListening : undefined);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha ao falar com o assistente");
       setMessages((current) => current.filter((m) => m.id !== assistantMessage.id));
@@ -174,6 +197,21 @@ export function ChatPanel({
                 className="hud-button rounded-sm px-2 py-1 text-xs"
               >
                 {voiceEnabled ? "🔊" : "🔇"}
+              </button>
+            )}
+            {isSpeechOutputSupported && isSpeechInputSupported && (
+              <button
+                type="button"
+                onClick={handleHandsFreeToggle}
+                aria-label={handsFreeEnabled ? "Desativar modo mãos-livres" : "Ativar modo mãos-livres"}
+                title="Modo mãos-livres: volta a ouvir sozinho depois de cada resposta"
+                className={
+                  handsFreeEnabled
+                    ? "rounded-sm border border-[#0084FF]/40 bg-[#0084FF]/10 px-2 py-1 text-xs text-[#0066cc]"
+                    : "hud-button rounded-sm px-2 py-1 text-xs"
+                }
+              >
+                {handsFreeEnabled ? "🤝 Mãos-livres" : "🤝"}
               </button>
             )}
             <button

@@ -5,10 +5,16 @@ import type {
   ChatCompletionTool,
 } from "openai/resources/chat/completions";
 import { supabase } from "@/lib/supabase";
-import { createGoogleCalendarEvent, getGoogleCalendarConnection } from "@/lib/google-calendar";
-import { createExpense } from "@/features/despesas/api";
+import {
+  createGoogleCalendarEvent,
+  getGoogleCalendarConnection,
+  listUpcomingGoogleCalendarEvents,
+} from "@/lib/google-calendar";
+import { createExpense, deleteExpense, listExpensesForMonth } from "@/features/despesas/api";
 import { FINANCE_CATEGORIES, type TransactionType } from "@/lib/finance-categories";
 import { getTechNews } from "@/lib/tech-news";
+import { createProject, listProjects, updateProjectStatus } from "@/features/projetos/api";
+import type { Project } from "@/types";
 
 const TIME_ZONE = "America/Sao_Paulo";
 
@@ -69,6 +75,101 @@ const TOOLS: ChatCompletionTool[] = [
       parameters: { type: "object", properties: {} },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "create_project",
+      description: "Cria um novo projeto do usuário.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Nome do projeto" },
+          description: { type: "string", description: "Descrição opcional do projeto" },
+        },
+        required: ["name"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_projects",
+      description:
+        "Lista os projetos do usuário, com nome e status (ativo, pausado ou concluído). Use " +
+        "quando o usuário perguntar quais projetos tem, o andamento deles, etc.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_project_status",
+      description: "Muda o status de um projeto existente (ativo, pausado ou concluído).",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Nome (ou parte do nome) do projeto a atualizar" },
+          status: { type: "string", enum: ["active", "paused", "done"] },
+        },
+        required: ["name", "status"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_expenses",
+      description:
+        "Lista as despesas e receitas de um mês. Use quando o usuário perguntar quanto gastou, " +
+        "quanto recebeu, ou pedir um resumo financeiro do mês.",
+      parameters: {
+        type: "object",
+        properties: {
+          month: {
+            type: "string",
+            description: "Mês no formato AAAA-MM. Se omitido, usa o mês atual.",
+          },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_expense",
+      description:
+        "Apaga um lançamento financeiro (despesa ou receita) do mês atual que bata com a " +
+        "descrição informada. Use para corrigir um lançamento errado.",
+      parameters: {
+        type: "object",
+        properties: {
+          description: {
+            type: "string",
+            description: "Trecho da descrição ou subcategoria do lançamento a apagar",
+          },
+        },
+        required: ["description"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_calendar_events",
+      description:
+        "Lista os próximos eventos do Google Agenda do usuário. Use quando ele perguntar o que " +
+        "tem na agenda, hoje, amanhã ou nos próximos dias.",
+      parameters: {
+        type: "object",
+        properties: {
+          days: {
+            type: "number",
+            description: "Quantos dias à frente olhar a partir de agora. Padrão: 7.",
+          },
+        },
+      },
+    },
+  },
 ];
 
 function formatCategoryTree() {
@@ -111,7 +212,16 @@ function buildSystemPrompt() {
     "com uma saudação curta de apresentador, conte as manchetes em texto corrido e conversacional — " +
     "sem listas, sem markdown, sem asteriscos, sem números — como se estivesse narrando em voz alta " +
     "para alguém ouvindo no carro, e feche com uma frase de encerramento curta. Fique entre 100 e " +
-    "180 palavras no total."
+    "180 palavras no total. " +
+    "Você também gerencia os projetos do usuário: create_project para criar, list_projects para " +
+    "listar (com status), update_project_status para pausar/concluir/reativar um projeto pelo " +
+    "nome. Use sempre que o usuário mencionar um projeto e o que quer fazer com ele. " +
+    "Você também pode listar os lançamentos financeiros de um mês (list_expenses) e apagar um " +
+    "lançamento que o usuário disser que está errado (delete_expense, buscando por trecho da " +
+    "descrição). E pode listar os próximos eventos do Google Agenda (list_calendar_events) quando " +
+    "o usuário perguntar o que tem na agenda. Para todas as ferramentas de listagem, narre o " +
+    "resultado em texto corrido e curto, não como uma lista técnica — e se a lista vier vazia, diga " +
+    "isso de forma natural."
   );
 }
 
@@ -126,6 +236,30 @@ async function runTool(toolCall: ChatCompletionMessageFunctionToolCall): Promise
 
   if (toolCall.function.name === "get_ai_news") {
     return runGetAiNews();
+  }
+
+  if (toolCall.function.name === "create_project") {
+    return runCreateProject(toolCall);
+  }
+
+  if (toolCall.function.name === "list_projects") {
+    return runListProjects();
+  }
+
+  if (toolCall.function.name === "update_project_status") {
+    return runUpdateProjectStatus(toolCall);
+  }
+
+  if (toolCall.function.name === "list_expenses") {
+    return runListExpenses(toolCall);
+  }
+
+  if (toolCall.function.name === "delete_expense") {
+    return runDeleteExpense(toolCall);
+  }
+
+  if (toolCall.function.name === "list_calendar_events") {
+    return runListCalendarEvents(toolCall);
   }
 
   return `Erro: ferramenta desconhecida "${toolCall.function.name}"`;
@@ -194,6 +328,156 @@ async function runGetAiNews(): Promise<string> {
   if (news.length === 0) return "Não foi possível buscar as notícias agora.";
 
   return news.map((item) => `- ${item.title}`).join("\n");
+}
+
+const PROJECT_STATUS_LABEL: Record<Project["status"], string> = {
+  active: "ativo",
+  paused: "pausado",
+  done: "concluído",
+};
+
+async function runCreateProject(
+  toolCall: ChatCompletionMessageFunctionToolCall
+): Promise<string> {
+  try {
+    const args = JSON.parse(toolCall.function.arguments) as {
+      name: string;
+      description?: string;
+    };
+
+    const { error } = await createProject({
+      name: args.name,
+      description: args.description ?? "",
+    });
+
+    if (error) return `Erro ao criar projeto: ${error}`;
+    return `Projeto "${args.name}" criado.`;
+  } catch (error) {
+    return `Erro ao criar projeto: ${error instanceof Error ? error.message : "falha desconhecida"}`;
+  }
+}
+
+async function runListProjects(): Promise<string> {
+  const projects = await listProjects();
+  if (projects.length === 0) return "Nenhum projeto cadastrado.";
+
+  return projects
+    .map((p) => `${p.name} (${PROJECT_STATUS_LABEL[p.status]})`)
+    .join(", ");
+}
+
+function findProjectByName(projects: Project[], query: string): Project | undefined {
+  const needle = query.trim().toLowerCase();
+  return projects.find((p) => p.name.toLowerCase().includes(needle));
+}
+
+async function runUpdateProjectStatus(
+  toolCall: ChatCompletionMessageFunctionToolCall
+): Promise<string> {
+  try {
+    const args = JSON.parse(toolCall.function.arguments) as {
+      name: string;
+      status: Project["status"];
+    };
+
+    const projects = await listProjects();
+    const project = findProjectByName(projects, args.name);
+    if (!project) return `Erro: não encontrei nenhum projeto chamado "${args.name}".`;
+
+    await updateProjectStatus(project.id, args.status);
+    return `Projeto "${project.name}" agora está ${PROJECT_STATUS_LABEL[args.status]}.`;
+  } catch (error) {
+    return `Erro ao atualizar projeto: ${error instanceof Error ? error.message : "falha desconhecida"}`;
+  }
+}
+
+async function runListExpenses(toolCall: ChatCompletionMessageFunctionToolCall): Promise<string> {
+  try {
+    const args = JSON.parse(toolCall.function.arguments || "{}") as { month?: string };
+    const month = args.month ?? new Date().toISOString().slice(0, 7);
+
+    const expenses = await listExpensesForMonth(month);
+    if (expenses.length === 0) return `Nenhum lançamento encontrado em ${month}.`;
+
+    const totalExpense = expenses
+      .filter((e) => e.type === "expense")
+      .reduce((sum, e) => sum + e.amount, 0);
+    const totalIncome = expenses
+      .filter((e) => e.type === "income")
+      .reduce((sum, e) => sum + e.amount, 0);
+
+    const lines = expenses
+      .map((e) => `${e.type === "income" ? "+" : "-"} R$ ${e.amount.toFixed(2)} ${e.description}`)
+      .join("; ");
+
+    return (
+      `Mês ${month}: total de despesas R$ ${totalExpense.toFixed(2)}, total de receitas ` +
+      `R$ ${totalIncome.toFixed(2)}. Lançamentos: ${lines}.`
+    );
+  } catch (error) {
+    return `Erro ao listar lançamentos: ${error instanceof Error ? error.message : "falha desconhecida"}`;
+  }
+}
+
+async function runDeleteExpense(
+  toolCall: ChatCompletionMessageFunctionToolCall
+): Promise<string> {
+  try {
+    const args = JSON.parse(toolCall.function.arguments) as { description: string };
+    const month = new Date().toISOString().slice(0, 7);
+    const expenses = await listExpensesForMonth(month);
+
+    const needle = args.description.trim().toLowerCase();
+    const matches = expenses.filter(
+      (e) =>
+        e.description.toLowerCase().includes(needle) ||
+        (e.subcategory ?? "").toLowerCase().includes(needle)
+    );
+
+    if (matches.length === 0) {
+      return `Erro: não encontrei nenhum lançamento deste mês parecido com "${args.description}".`;
+    }
+    if (matches.length > 1) {
+      const options = matches
+        .map((e) => `${e.description} (R$ ${e.amount.toFixed(2)})`)
+        .join(", ");
+      return `Encontrei mais de um lançamento parecido: ${options}. Peça pra apagar de forma mais específica.`;
+    }
+
+    await deleteExpense(matches[0].id);
+    return `Lançamento "${matches[0].description}" (R$ ${matches[0].amount.toFixed(2)}) apagado.`;
+  } catch (error) {
+    return `Erro ao apagar lançamento: ${error instanceof Error ? error.message : "falha desconhecida"}`;
+  }
+}
+
+async function runListCalendarEvents(
+  toolCall: ChatCompletionMessageFunctionToolCall
+): Promise<string> {
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return "Erro: usuário não autenticado.";
+
+    const connection = await getGoogleCalendarConnection(user.id);
+    if (!connection) {
+      return "Erro: o Google Agenda não está conectado. Peça para o usuário clicar em 'Conectar Google Agenda' no topo da tela.";
+    }
+
+    const args = JSON.parse(toolCall.function.arguments || "{}") as { days?: number };
+    const events = await listUpcomingGoogleCalendarEvents(connection.access_token, {
+      days: args.days ?? 7,
+    });
+
+    if (events.length === 0) return "Nenhum evento encontrado no período.";
+
+    return events
+      .map((e) => `${e.summary ?? "(sem título)"} em ${e.start.dateTime ?? e.start.date}`)
+      .join("; ");
+  } catch (error) {
+    return `Erro ao buscar agenda: ${error instanceof Error ? error.message : "falha desconhecida"}`;
+  }
 }
 
 /** Streams one completion turn, invoking onToken for each text chunk and returning any tool calls. */
