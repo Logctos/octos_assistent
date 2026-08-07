@@ -11,6 +11,8 @@ export interface Expense {
   description: string;
   amount: number;
   category: string;
+  subcategory: string | null;
+  type: "income" | "expense";
   created_at: string;
 }
 

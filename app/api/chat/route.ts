@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getOpenAIClient } from "@/lib/openai";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { createGoogleCalendarEvent, getGoogleCalendarConnection } from "@/lib/google-calendar";
+import {
+  FINANCE_CATEGORIES,
+  FALLBACK_GROUP,
+  isKnownSubcategory,
+  type TransactionType,
+} from "@/lib/finance-categories";
+import { getTechNews } from "@/lib/tech-news";
 import type {
   ChatCompletionMessageFunctionToolCall,
   ChatCompletionMessageParam,
@@ -39,7 +47,47 @@ const TOOLS: ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "create_expense",
+      description: "Registra uma despesa ou receita financeira do usuário.",
+      parameters: {
+        type: "object",
+        properties: {
+          type: { type: "string", enum: ["expense", "income"], description: "Despesa ou receita" },
+          category: { type: "string", description: "Grupo da categoria, ex: Alimentação" },
+          subcategory: { type: "string", description: "Subcategoria dentro do grupo, ex: Saídas" },
+          amount: { type: "number", description: "Valor em reais, ex: 45.90" },
+          description: { type: "string", description: "Observação opcional do lançamento" },
+        },
+        required: ["type", "category", "subcategory", "amount"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_ai_news",
+      description:
+        "Busca as manchetes mais recentes de IA e tecnologia. Use quando o usuário pedir para " +
+        "resumir, contar, atualizar ou fazer um podcast sobre as notícias de IA.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
 ];
+
+function formatCategoryTree() {
+  return (Object.entries(FINANCE_CATEGORIES) as [TransactionType, Record<string, string[]>][])
+    .map(([type, groups]) => {
+      const label = type === "income" ? "receitas" : "despesas";
+      const groupList = Object.entries(groups)
+        .map(([group, subs]) => `${group} (${subs.join(", ")})`)
+        .join("; ");
+      return `${label} — ${groupList}`;
+    })
+    .join(" | ");
+}
 
 function buildSystemPrompt() {
   const now = new Date()
@@ -55,8 +103,30 @@ function buildSystemPrompt() {
     "Você tem uma ferramenta para criar eventos no Google Agenda do usuário — use-a sempre que ele " +
     "pedir para agendar, marcar ou criar algo na agenda/calendário. Calcule os horários em ISO 8601 " +
     "com esse offset a partir da data/hora atual acima. Se o usuário não informar o horário de " +
-    "término, assuma 1 hora de duração."
+    "término, assuma 1 hora de duração. " +
+    "Você também tem uma ferramenta para registrar despesas e receitas financeiras — use-a sempre " +
+    "que o usuário disser que gastou, pagou, recebeu ou ganhou dinheiro, ou pedir para lançar algo " +
+    `financeiro. Categorias já cadastradas (grupo e subcategorias): ${formatCategoryTree()}. ` +
+    "Escolha o grupo e a subcategoria existentes que melhor combinam com o que o usuário descreveu. " +
+    "Se nada bater bem, use o grupo 'Outras Despesas' (despesa) ou 'Receitas' (receita) com uma " +
+    "subcategoria curta que descreva o lançamento. Se o usuário não informar o valor, pergunte antes " +
+    "de chamar a ferramenta — não invente um valor. " +
+    "Você também tem uma ferramenta para buscar as manchetes mais recentes de IA e tecnologia. " +
+    "Sempre que o usuário pedir para resumir, contar, atualizar ou fazer um podcast sobre as " +
+    "notícias, use essa ferramenta e depois narre o resultado como um mini podcast falado: comece " +
+    "com uma saudação curta de apresentador, conte as manchetes em texto corrido e conversacional — " +
+    "sem listas, sem markdown, sem asteriscos, sem números — como se estivesse narrando em voz alta " +
+    "para alguém ouvindo no carro, e feche com uma frase de encerramento curta. Fique entre 100 e " +
+    "180 palavras no total."
   );
+}
+
+async function getAuthenticatedUser() {
+  const supabase = await getSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return { supabase, user };
 }
 
 export async function POST(request: NextRequest) {
@@ -153,16 +223,26 @@ async function streamCompletion(
 }
 
 async function runTool(toolCall: ChatCompletionMessageFunctionToolCall): Promise<string> {
-  if (toolCall.function.name !== "create_calendar_event") {
-    return `Erro: ferramenta desconhecida "${toolCall.function.name}"`;
+  if (toolCall.function.name === "create_calendar_event") {
+    return runCreateCalendarEvent(toolCall);
   }
 
-  try {
-    const supabase = await getSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+  if (toolCall.function.name === "create_expense") {
+    return runCreateExpense(toolCall);
+  }
 
+  if (toolCall.function.name === "get_ai_news") {
+    return runGetAiNews();
+  }
+
+  return `Erro: ferramenta desconhecida "${toolCall.function.name}"`;
+}
+
+async function runCreateCalendarEvent(
+  toolCall: ChatCompletionMessageFunctionToolCall
+): Promise<string> {
+  try {
+    const { user } = await getAuthenticatedUser();
     if (!user) {
       return "Erro: usuário não autenticado.";
     }
@@ -183,5 +263,66 @@ async function runTool(toolCall: ChatCompletionMessageFunctionToolCall): Promise
     return `Evento criado com sucesso: "${args.summary}" (${args.start} até ${args.end}). Link: ${event.htmlLink}`;
   } catch (error) {
     return `Erro ao criar evento: ${error instanceof Error ? error.message : "falha desconhecida"}`;
+  }
+}
+
+async function runGetAiNews(): Promise<string> {
+  const news = await getTechNews(6);
+  if (news.length === 0) {
+    return "Não foi possível buscar as notícias agora.";
+  }
+
+  return news.map((item) => `- ${item.title}`).join("\n");
+}
+
+async function runCreateExpense(toolCall: ChatCompletionMessageFunctionToolCall): Promise<string> {
+  try {
+    const { supabase, user } = await getAuthenticatedUser();
+    if (!user) {
+      return "Erro: usuário não autenticado.";
+    }
+
+    const args = JSON.parse(toolCall.function.arguments) as {
+      type: string;
+      category: string;
+      subcategory: string;
+      amount: number | string;
+      description?: string;
+    };
+
+    const type: TransactionType = args.type === "income" ? "income" : "expense";
+    const amount = Number(args.amount);
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return "Erro: informe um valor válido para o lançamento.";
+    }
+
+    const matches = isKnownSubcategory(type, args.category, args.subcategory);
+    const category = matches ? args.category : FALLBACK_GROUP[type];
+    const subcategory = args.subcategory || category;
+
+    const { error } = await supabase.from("expenses").insert({
+      user_id: user.id,
+      description: args.description?.trim() || subcategory,
+      amount,
+      category,
+      subcategory,
+      type,
+    });
+
+    if (error) {
+      console.error(
+        `create_expense insert failed — code=${error.code} message=${error.message} details=${error.details} hint=${error.hint}`
+      );
+      return `Erro ao registrar lançamento: ${error.message || error.code || "erro desconhecido"}`;
+    }
+
+    revalidatePath("/despesas");
+
+    const label = type === "income" ? "Receita" : "Despesa";
+    return `${label} registrada: ${subcategory} — R$ ${amount.toFixed(2)}.`;
+  } catch (error) {
+    console.error("create_expense tool failed:", error);
+    return `Erro ao registrar lançamento: ${error instanceof Error ? error.message : "falha desconhecida"}`;
   }
 }

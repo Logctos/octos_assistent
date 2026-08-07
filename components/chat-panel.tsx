@@ -6,7 +6,8 @@ import { useSpeechRecognition } from "@/lib/hooks/use-speech-recognition";
 import { useSpeechSynthesis } from "@/lib/hooks/use-speech-synthesis";
 import { OctosAvatar } from "@/components/octos-avatar";
 import { JarvisFrame } from "@/components/jarvis-frame";
-import { DateTile, WeatherTile, ActivitiesTile, AgentsTile } from "@/components/hud-tiles";
+import { DateTile, WeatherTile, NewsTile, ActivitiesTile, AgentsTile } from "@/components/hud-tiles";
+import type { NewsItem } from "@/lib/tech-news";
 
 const API_KEY_STORAGE_KEY = "octos:openai-api-key";
 const VOICE_ENABLED_STORAGE_KEY = "octos:voice-enabled";
@@ -25,10 +26,12 @@ export function ChatPanel({
   dateLabel,
   activities,
   agents,
+  news,
 }: {
   dateLabel: string;
   activities: Activity[];
   agents: AgentStatus[];
+  news: NewsItem[];
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -176,35 +179,15 @@ export function ChatPanel({
 
   return (
     <div className="flex w-full flex-1 flex-col gap-4">
-      <div className="grid flex-1 grid-cols-1 gap-4 lg:grid-cols-[260px_1fr_260px]">
-        <div className="flex flex-col gap-4 lg:justify-center">
-          <DateTile dateLabel={dateLabel} />
-          <WeatherTile />
-        </div>
-
-        <div className="flex flex-col items-center justify-center gap-3 py-6">
-          <span className="arc-reactor" />
-          <JarvisFrame>
-            <OctosAvatar size={220} />
-          </JarvisFrame>
-          <h1 className="font-fustat text-3xl font-extrabold tracking-tight text-black">Octos.</h1>
-          <span className="font-mono text-xs tracking-widest text-[#0084FF]/70">
-            {statusLabel.toUpperCase()}
-          </span>
-        </div>
-
-        <div className="flex flex-col gap-4 lg:justify-center">
-          <ActivitiesTile activities={activities} />
-          <AgentsTile agents={agents} />
-        </div>
-      </div>
-
       <div className="hud-panel flex w-full flex-col gap-3 rounded-sm p-4">
         <div className="flex items-center justify-between">
-          <span className="text-xs text-zinc-500">
-            {apiKey ? "Chave da OpenAI configurada" : "Chave da OpenAI não configurada"} ·{" "}
-            {messages.length} mensagens
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="hud-eyebrow">Console</span>
+            <span className="text-xs text-zinc-500">
+              {apiKey ? "Chave da OpenAI configurada" : "Chave da OpenAI não configurada"} ·{" "}
+              {messages.length} mensagens
+            </span>
+          </div>
           <div className="flex items-center gap-2">
             {isSpeechOutputSupported && (
               <button
@@ -243,7 +226,30 @@ export function ChatPanel({
             />
           </div>
         )}
+      </div>
 
+      <div className="grid flex-1 grid-cols-1 gap-4 lg:grid-cols-[260px_1fr_260px]">
+        <div className="flex flex-col gap-4 lg:justify-center">
+          <DateTile dateLabel={dateLabel} />
+          <WeatherTile />
+          <NewsTile news={news} />
+        </div>
+
+        <div className="flex flex-col items-center justify-center gap-3 py-6">
+          <span className="arc-reactor" />
+          <JarvisFrame>
+            <OctosAvatar size={220} />
+          </JarvisFrame>
+          <span className="hud-eyebrow">{statusLabel}</span>
+        </div>
+
+        <div className="flex flex-col gap-4 lg:justify-center">
+          <ActivitiesTile activities={activities} />
+          <AgentsTile agents={agents} />
+        </div>
+      </div>
+
+      <div className="hud-panel hud-scanline flex w-full flex-col gap-3 rounded-sm p-4">
         <div className="hud-panel flex h-72 flex-col gap-3 overflow-y-auto rounded-sm p-4">
           {messages.length === 0 && (
             <p className="m-auto text-center text-sm text-zinc-500">
@@ -253,10 +259,10 @@ export function ChatPanel({
           {messages.map((message) => (
             <div
               key={message.id}
-              className={`max-w-[80%] rounded px-3 py-2 text-sm ${
+              className={`max-w-[80%] rounded-sm px-3 py-2 text-sm ${
                 message.role === "user"
                   ? "ml-auto border border-[#0084FF]/20 bg-[#0084FF]/8 text-[#0066cc]"
-                  : "mr-auto bg-zinc-100 text-zinc-800"
+                  : "mr-auto border border-black/5 bg-zinc-50 text-zinc-800"
               }`}
             >
               {message.content || (message.role === "assistant" && isLoading ? "…" : "")}

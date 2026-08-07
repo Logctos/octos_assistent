@@ -1,6 +1,7 @@
 import { ChatPanel } from "@/components/chat-panel";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { getGoogleCalendarConnection, listUpcomingGoogleCalendarEvents } from "@/lib/google-calendar";
+import { getTechNews } from "@/lib/tech-news";
 import type { Project } from "@/types";
 
 const TIME_ZONE = "America/Sao_Paulo";
@@ -65,5 +66,7 @@ export default async function Home() {
     { label: "Conta (Supabase)", connected: Boolean(user) },
   ];
 
-  return <ChatPanel dateLabel={dateLabel} activities={activities} agents={agents} />;
+  const news = await getTechNews();
+
+  return <ChatPanel dateLabel={dateLabel} activities={activities} agents={agents} news={news} />;
 }

@@ -39,7 +39,10 @@ export default async function ProjetosPage() {
 
   return (
     <div className="flex w-full max-w-2xl flex-col gap-4">
-      <h1 className="font-outfit text-2xl font-bold tracking-tight text-black">Projetos</h1>
+      <div className="flex flex-col gap-1.5">
+        <span className="hud-eyebrow">Gestão de projetos</span>
+        <h1 className="font-outfit text-2xl font-bold tracking-tight text-black">Projetos</h1>
+      </div>
 
       <GoogleCalendarPanel
         connected={calendarConnected}

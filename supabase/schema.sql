@@ -9,6 +9,21 @@ create table if not exists expenses (
   created_at timestamptz not null default now()
 );
 
+-- Fluxo de caixa: distingue receita/despesa e adiciona a subcategoria (linha do
+-- extrato, ex. categoria "Cartões de Crédito" > subcategoria "Nu Bank").
+-- Seguro rodar de novo em bancos que já têm a tabela `expenses` da versão anterior.
+alter table expenses add column if not exists type text not null default 'expense';
+alter table expenses add column if not exists subcategory text;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'expenses_type_check'
+  ) then
+    alter table expenses add constraint expenses_type_check check (type in ('income', 'expense'));
+  end if;
+end $$;
+
 create table if not exists projects (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,

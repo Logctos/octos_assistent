@@ -67,7 +67,7 @@ export function GoogleCalendarPanel({
   return (
     <div className="hud-panel flex flex-col gap-3 rounded-sm p-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-xs font-bold tracking-widest text-[#0084FF]/70">GOOGLE AGENDA</h2>
+        <h2 className="hud-eyebrow">GOOGLE AGENDA</h2>
         {connected && !error && (
           <div className="flex items-center gap-2 text-xs">
             <button

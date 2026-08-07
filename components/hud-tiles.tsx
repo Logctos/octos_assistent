@@ -1,5 +1,6 @@
 import { WeatherWidget } from "@/components/weather-widget";
 import { HudClock } from "@/components/hud-clock";
+import type { NewsItem } from "@/lib/tech-news";
 
 interface Activity {
   label: string;
@@ -14,7 +15,7 @@ interface AgentStatus {
 export function DateTile({ dateLabel }: { dateLabel: string }) {
   return (
     <div className="hud-panel rounded-sm p-4">
-      <h2 className="text-xs font-bold tracking-widest text-[#0084FF]/70">DATA</h2>
+      <h2 className="hud-eyebrow">DATA</h2>
       <div className="mt-2 text-2xl font-bold tracking-wide text-zinc-900">
         <HudClock />
       </div>
@@ -26,7 +27,7 @@ export function DateTile({ dateLabel }: { dateLabel: string }) {
 export function WeatherTile() {
   return (
     <div className="hud-panel rounded-sm p-4">
-      <h2 className="text-xs font-bold tracking-widest text-[#0084FF]/70">CLIMA</h2>
+      <h2 className="hud-eyebrow">CLIMA</h2>
       <div className="mt-2">
         <WeatherWidget />
       </div>
@@ -34,12 +35,36 @@ export function WeatherTile() {
   );
 }
 
+export function NewsTile({ news }: { news: NewsItem[] }) {
+  return (
+    <div className="hud-panel rounded-sm p-4">
+      <h2 className="hud-eyebrow">Notícias de IA</h2>
+      {news.length === 0 ? (
+        <p className="mt-2 text-sm text-zinc-500">Sem notícias no momento.</p>
+      ) : (
+        <ul className="mt-2 flex flex-col gap-2">
+          {news.map((item) => (
+            <li key={item.link}>
+              <a
+                href={item.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="line-clamp-2 text-sm leading-snug text-zinc-800 hover:text-[#0084FF]"
+              >
+                {item.title}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export function ActivitiesTile({ activities }: { activities: Activity[] }) {
   return (
     <div className="hud-panel rounded-sm p-4">
-      <h2 className="text-xs font-bold tracking-widest text-[#0084FF]/70">
-        PRINCIPAIS ATIVIDADES
-      </h2>
+      <h2 className="hud-eyebrow">PRINCIPAIS ATIVIDADES</h2>
       {activities.length === 0 ? (
         <p className="mt-2 text-sm text-zinc-500">Nada por enquanto.</p>
       ) : (
@@ -64,7 +89,7 @@ export function ActivitiesTile({ activities }: { activities: Activity[] }) {
 export function AgentsTile({ agents }: { agents: AgentStatus[] }) {
   return (
     <div className="hud-panel rounded-sm p-4">
-      <h2 className="text-xs font-bold tracking-widest text-[#0084FF]/70">AGENTES CONECTADOS</h2>
+      <h2 className="hud-eyebrow">AGENTES CONECTADOS</h2>
       <ul className="mt-2 flex flex-col gap-1.5">
         {agents.map((agent) => (
           <li key={agent.label} className="flex items-center gap-2 text-sm text-zinc-800">

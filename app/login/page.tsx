@@ -30,7 +30,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-8 bg-white px-6 py-24 font-inter">
+    <div className="hud-grid-bg flex flex-1 flex-col items-center justify-center gap-8 px-6 py-24 font-inter">
       <div className="flex flex-col items-center gap-3 text-center">
         <span className="font-fustat flex items-center gap-2 text-3xl font-extrabold tracking-tight text-black">
           <Bot className="h-8 w-8 text-[#0084FF]" />
