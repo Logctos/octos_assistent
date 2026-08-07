@@ -180,8 +180,8 @@ export function ChatPanel({
   return (
     <div className="flex w-full flex-1 flex-col gap-4">
       <div className="hud-panel flex w-full flex-col gap-3 rounded-sm p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <span className="hud-eyebrow">Console</span>
             <span className="text-xs text-zinc-500">
               {apiKey ? "Chave da OpenAI configurada" : "Chave da OpenAI não configurada"} ·{" "}
@@ -238,7 +238,7 @@ export function ChatPanel({
         <div className="flex flex-col items-center justify-center gap-3 py-6">
           <span className="arc-reactor" />
           <JarvisFrame>
-            <OctosAvatar size={220} />
+            <OctosAvatar />
           </JarvisFrame>
           <span className="hud-eyebrow">{statusLabel}</span>
         </div>

@@ -113,7 +113,7 @@ export default async function DespesasPage({
 
   return (
     <div className="flex w-full max-w-2xl flex-col gap-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-col gap-1.5">
           <span className="hud-eyebrow">Módulo financeiro</span>
           <h1 className="font-outfit text-2xl font-bold tracking-tight text-black">Despesas</h1>

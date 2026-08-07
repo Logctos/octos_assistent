@@ -23,8 +23,8 @@ export function AppHeader({
   const pathname = usePathname();
 
   return (
-    <header className="flex w-full max-w-2xl items-center justify-between border-b border-[#0084FF]/10 pb-4 text-sm">
-      <div className="flex items-center gap-6">
+    <header className="flex w-full max-w-2xl flex-wrap items-center justify-between gap-x-4 gap-y-3 border-b border-[#0084FF]/10 pb-4 text-sm">
+      <div className="flex items-center gap-4 sm:gap-6">
         <Link
           href="/app"
           className="font-fustat flex items-center gap-2 text-lg font-extrabold tracking-tight text-black"
@@ -32,7 +32,7 @@ export function AppHeader({
           <Bot className="h-5 w-5 text-[#0084FF] drop-shadow-[0_0_6px_rgba(0,132,255,0.5)]" />
           Octos.
         </Link>
-        <nav className="flex gap-8">
+        <nav className="flex flex-wrap gap-4 sm:gap-8">
           {NAV_ITEMS.map((item) => {
             const active = pathname === item.href;
             return (
@@ -52,20 +52,20 @@ export function AppHeader({
           })}
         </nav>
       </div>
-      <div className="flex items-center gap-5">
+      <div className="flex flex-wrap items-center gap-3 sm:gap-5">
         <div className="hidden items-center gap-2 sm:flex">
           <span className="arc-reactor" />
           <span className="font-mono text-xs tracking-widest text-[#0084FF]/70">ONLINE</span>
           <HudClock />
         </div>
         {userEmail && (
-          <div className="border-l border-[#0084FF]/15 pl-5">
+          <div className="sm:border-l sm:border-[#0084FF]/15 sm:pl-5">
             <ConnectGoogleCalendarButton connected={Boolean(googleCalendarConnected)} />
           </div>
         )}
         {userEmail && (
-          <div className="flex items-center gap-3 border-l border-[#0084FF]/15 pl-5 text-xs text-zinc-600">
-            <span>{userEmail}</span>
+          <div className="flex items-center gap-3 text-xs text-zinc-600 sm:border-l sm:border-[#0084FF]/15 sm:pl-5">
+            <span className="hidden sm:inline">{userEmail}</span>
             <LogoutButton />
           </div>
         )}
