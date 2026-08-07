@@ -9,11 +9,10 @@ if (!url || !publishableKey) {
 
 /**
  * Browser-only Supabase client. Session persists in localStorage — no cookies, no server.
- * flowType 'pkce' is required so OAuth redirects (Google Calendar connect) land back on
- * /auth/callback with a `?code=` query param — the default 'implicit' flow puts the tokens
- * in the URL hash instead, which auth-callback.tsx never reads, silently dropping the
- * provider token before it's saved to google_calendar_connections.
+ * Deliberately using the default 'implicit' flowType (not 'pkce'): Supabase's PKCE token
+ * exchange (POST /token?grant_type=pkce) does not return provider_token/provider_refresh_token
+ * in its response, so auth-callback.tsx would have no Google access token to save after linking
+ * the Google Calendar identity. Implicit flow returns those directly in the redirect, which the
+ * SDK auto-parses (detectSessionInUrl) — see auth-callback.tsx for how it's read back out.
  */
-export const supabase = createClient(url, publishableKey, {
-  auth: { flowType: "pkce" },
-});
+export const supabase = createClient(url, publishableKey);

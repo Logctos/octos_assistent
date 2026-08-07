@@ -4,8 +4,10 @@ import { supabase } from "@/lib/supabase";
 
 /**
  * OAuth redirect target for Supabase identity linking (e.g. Google Calendar connect).
- * Exchanges the PKCE `code` for a session, then persists the provider tokens so the
- * chat's create_calendar_event tool and the calendar panel can call the Google API later.
+ * With the implicit flow, the SDK auto-parses the session (incl. provider_token) from the
+ * URL hash during its own initialization — supabase.auth.getSession() awaits that init before
+ * resolving, so calling it here reliably returns the freshly-linked session without us racing
+ * an onAuthStateChange event or manually parsing the URL ourselves.
  */
 export function AuthCallback() {
   const [searchParams] = useSearchParams();
@@ -16,24 +18,20 @@ export function AuthCallback() {
     if (ran.current) return;
     ran.current = true;
 
-    const code = searchParams.get("code");
     const next = searchParams.get("next") ?? "/";
 
-    if (!code) {
-      navigate("/login?error=missing_code", { replace: true });
-      return;
-    }
-
     (async () => {
-      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-      if (error || !data.session) {
-        console.error("Google OAuth callback: exchangeCodeForSession failed", error);
-        navigate(`${next}?google_calendar=error&reason=exchange_failed`, { replace: true });
+      if (!session) {
+        console.error("Google OAuth callback: no session after redirect");
+        navigate(`${next}?google_calendar=error&reason=no_session`, { replace: true });
         return;
       }
 
-      const { user, provider_token, provider_refresh_token } = data.session;
+      const { user, provider_token, provider_refresh_token } = session;
 
       if (!provider_token) {
         console.error("Google OAuth callback: session has no provider_token", { userId: user.id });

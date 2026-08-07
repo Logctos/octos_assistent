@@ -3,11 +3,10 @@ import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 
 const ERROR_MESSAGES: Record<string, string> = {
-  no_provider_token: "O Google não devolveu permissão de acesso. Tente conectar de novo.",
-  missing_code:
-    "A sessão de conexão expirou ou foi aberta em outra aba. Feche esta aba, abra o Octos de novo e tente conectar uma única vez.",
-  exchange_failed:
-    "A sessão de conexão expirou ou foi iniciada em outra aba/dispositivo. Feche esta aba, abra o Octos numa aba nova e clique em Conectar uma única vez.",
+  no_provider_token:
+    "O Google não devolveu permissão de acesso. Tente conectar de novo e aceite todas as permissões pedidas.",
+  no_session:
+    "A conexão foi interrompida antes de terminar. Tente conectar de novo numa aba nova.",
 };
 
 export function ConnectGoogleCalendarButton({ connected }: { connected: boolean }) {
