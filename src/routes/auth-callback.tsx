@@ -29,7 +29,7 @@ export function AuthCallback() {
 
       if (error || !data.session) {
         console.error("Google OAuth callback: exchangeCodeForSession failed", error);
-        navigate(`${next}?google_calendar=error`, { replace: true });
+        navigate(`${next}?google_calendar=error&reason=exchange_failed`, { replace: true });
         return;
       }
 

@@ -1,9 +1,39 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
+
+const ERROR_MESSAGES: Record<string, string> = {
+  no_provider_token: "O Google não devolveu permissão de acesso. Tente conectar de novo.",
+  missing_code:
+    "A sessão de conexão expirou ou foi aberta em outra aba. Feche esta aba, abra o Octos de novo e tente conectar uma única vez.",
+  exchange_failed:
+    "A sessão de conexão expirou ou foi iniciada em outra aba/dispositivo. Feche esta aba, abra o Octos numa aba nova e clique em Conectar uma única vez.",
+};
 
 export function ConnectGoogleCalendarButton({ connected }: { connected: boolean }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  useEffect(() => {
+    const status = searchParams.get("google_calendar");
+    if (!status) return;
+
+    if (status === "error") {
+      const reason = searchParams.get("reason");
+      setError(
+        (reason && ERROR_MESSAGES[reason]) ||
+          reason ||
+          "Não foi possível conectar o Google Agenda. Tente de novo."
+      );
+    }
+
+    const next = new URLSearchParams(searchParams);
+    next.delete("google_calendar");
+    next.delete("reason");
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function handleConnect() {
     setIsLoading(true);
