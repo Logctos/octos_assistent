@@ -28,6 +28,7 @@ export function AuthCallback() {
       const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
       if (error || !data.session) {
+        console.error("Google OAuth callback: exchangeCodeForSession failed", error);
         navigate(`${next}?google_calendar=error`, { replace: true });
         return;
       }
