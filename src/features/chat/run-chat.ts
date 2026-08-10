@@ -98,8 +98,8 @@ const TOOLS: ChatCompletionTool[] = [
           description: { type: "string", description: "Descrição opcional do projeto" },
           category: {
             type: "string",
-            enum: ["trabalho", "estudos"],
-            description: "Categoria do projeto: trabalho ou estudos.",
+            enum: ["trabalho", "estudos", "ambas"],
+            description: "Categoria do projeto: trabalho, estudos ou ambas.",
           },
         },
         required: ["name", "category"],
@@ -235,8 +235,9 @@ function buildSystemPrompt() {
     "Você também gerencia os projetos do usuário: create_project para criar, list_projects para " +
     "listar (com categoria e status), update_project_status para pausar/concluir/reativar um " +
     "projeto pelo nome. Use sempre que o usuário mencionar um projeto e o que quer fazer com ele. " +
-    "Todo projeto novo precisa de uma categoria, trabalho ou estudos — se não estiver óbvio pelo " +
-    "que o usuário descreveu, pergunte antes de chamar create_project (não invente a categoria). " +
+    "Todo projeto novo precisa de uma categoria: trabalho, estudos ou ambas (quando envolve os " +
+    "dois) — se não estiver óbvio pelo que o usuário descreveu, pergunte antes de chamar " +
+    "create_project (não invente a categoria). " +
     "Você também pode listar os lançamentos financeiros de um mês (list_expenses) e apagar um " +
     "lançamento que o usuário disser que está errado (delete_expense, buscando por trecho da " +
     "descrição). E pode listar os próximos eventos do Google Agenda (list_calendar_events) quando " +

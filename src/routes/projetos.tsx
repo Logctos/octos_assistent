@@ -61,7 +61,13 @@ export function ProjetosPage() {
           <p className="py-6 text-center text-sm text-zinc-500">Nenhum projeto cadastrado.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <ProjectCategorySection
+            title="Estudos"
+            projects={projects.filter((p) => p.category === "estudos")}
+            onDelete={handleDelete}
+            onChanged={refetchProjects}
+          />
           <ProjectCategorySection
             title="Trabalho"
             projects={projects.filter((p) => p.category === "trabalho")}
@@ -69,8 +75,8 @@ export function ProjetosPage() {
             onChanged={refetchProjects}
           />
           <ProjectCategorySection
-            title="Estudos"
-            projects={projects.filter((p) => p.category === "estudos")}
+            title="Ambas"
+            projects={projects.filter((p) => p.category === "ambas")}
             onDelete={handleDelete}
             onChanged={refetchProjects}
           />

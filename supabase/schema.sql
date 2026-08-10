@@ -38,14 +38,8 @@ create table if not exists projects (
 alter table projects add column if not exists category text;
 update projects set category = 'trabalho' where category is null;
 alter table projects alter column category set not null;
-do $$
-begin
-  if not exists (
-    select 1 from pg_constraint where conname = 'projects_category_check'
-  ) then
-    alter table projects add constraint projects_category_check check (category in ('trabalho', 'estudos'));
-  end if;
-end $$;
+alter table projects drop constraint if exists projects_category_check;
+alter table projects add constraint projects_category_check check (category in ('trabalho', 'estudos', 'ambas'));
 
 create table if not exists google_calendar_connections (
   user_id uuid primary key references auth.users(id) on delete cascade,

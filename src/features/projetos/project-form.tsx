@@ -14,7 +14,7 @@ export function ProjectForm({ onCreated }: { onCreated?: () => void }) {
     const { error: submitError } = await createProject({
       name: String(formData.get("name") ?? ""),
       description: String(formData.get("description") ?? ""),
-      category: formData.get("category") === "estudos" ? "estudos" : "trabalho",
+      category: (formData.get("category") as "trabalho" | "estudos" | "ambas" | null) ?? "trabalho",
     });
 
     setIsPending(false);
@@ -71,6 +71,7 @@ export function ProjectForm({ onCreated }: { onCreated?: () => void }) {
         >
           <option value="trabalho">Trabalho</option>
           <option value="estudos">Estudos</option>
+          <option value="ambas">Ambas</option>
         </select>
       </div>
 

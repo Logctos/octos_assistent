@@ -22,6 +22,6 @@ export interface Project {
   name: string;
   description: string | null;
   status: "active" | "paused" | "done";
-  category: "trabalho" | "estudos";
+  category: "trabalho" | "estudos" | "ambas";
   created_at: string;
 }
