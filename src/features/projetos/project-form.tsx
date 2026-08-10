@@ -14,6 +14,7 @@ export function ProjectForm({ onCreated }: { onCreated?: () => void }) {
     const { error: submitError } = await createProject({
       name: String(formData.get("name") ?? ""),
       description: String(formData.get("description") ?? ""),
+      category: formData.get("category") === "estudos" ? "estudos" : "trabalho",
     });
 
     setIsPending(false);
@@ -55,6 +56,22 @@ export function ProjectForm({ onCreated }: { onCreated?: () => void }) {
           disabled={isPending}
           className="hud-input rounded-sm px-3 py-2 text-sm text-zinc-900 disabled:cursor-not-allowed"
         />
+      </div>
+
+      <div className="flex w-full flex-col gap-1 sm:w-32">
+        <label htmlFor="category" className="text-xs text-zinc-500">
+          Categoria
+        </label>
+        <select
+          id="category"
+          name="category"
+          disabled={isPending}
+          defaultValue="trabalho"
+          className="hud-input rounded-sm px-3 py-2 text-sm text-zinc-900 disabled:cursor-not-allowed"
+        >
+          <option value="trabalho">Trabalho</option>
+          <option value="estudos">Estudos</option>
+        </select>
       </div>
 
       <button type="submit" disabled={isPending} className="hud-button rounded-sm px-4 py-2 text-sm">

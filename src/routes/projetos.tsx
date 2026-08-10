@@ -56,38 +56,70 @@ export function ProjetosPage() {
 
       <ProjectForm onCreated={refetchProjects} />
 
-      <div className="hud-panel flex flex-col gap-2 rounded-sm p-4">
-        {projects.length === 0 ? (
+      {projects.length === 0 ? (
+        <div className="hud-panel rounded-sm p-4">
           <p className="py-6 text-center text-sm text-zinc-500">Nenhum projeto cadastrado.</p>
-        ) : (
-          <ul className="flex flex-col divide-y divide-black/5">
-            {projects.map((project) => (
-              <li key={project.id} className="flex items-center justify-between gap-3 py-3 text-sm">
-                <div>
-                  <p className="text-zinc-800">{project.name}</p>
-                  {project.description && (
-                    <p className="text-xs text-zinc-500">{project.description}</p>
-                  )}
-                </div>
-                <div className="flex items-center gap-3">
-                  <ProjectStatusSelect
-                    id={project.id}
-                    status={project.status}
-                    onChanged={refetchProjects}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(project.id)}
-                    className="text-xs text-red-600 hover:text-red-700"
-                  >
-                    Excluir
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <ProjectCategorySection
+            title="Trabalho"
+            projects={projects.filter((p) => p.category === "trabalho")}
+            onDelete={handleDelete}
+            onChanged={refetchProjects}
+          />
+          <ProjectCategorySection
+            title="Estudos"
+            projects={projects.filter((p) => p.category === "estudos")}
+            onDelete={handleDelete}
+            onChanged={refetchProjects}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProjectCategorySection({
+  title,
+  projects,
+  onDelete,
+  onChanged,
+}: {
+  title: string;
+  projects: Project[];
+  onDelete: (id: string) => void;
+  onChanged: () => void;
+}) {
+  return (
+    <div className="hud-panel flex flex-col gap-2 rounded-sm p-4">
+      <span className="hud-eyebrow">{title}</span>
+      {projects.length === 0 ? (
+        <p className="py-4 text-center text-sm text-zinc-500">Nenhum projeto aqui.</p>
+      ) : (
+        <ul className="flex flex-col divide-y divide-black/5">
+          {projects.map((project) => (
+            <li key={project.id} className="flex items-center justify-between gap-3 py-3 text-sm">
+              <div>
+                <p className="text-zinc-800">{project.name}</p>
+                {project.description && (
+                  <p className="text-xs text-zinc-500">{project.description}</p>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                <ProjectStatusSelect id={project.id} status={project.status} onChanged={onChanged} />
+                <button
+                  type="button"
+                  onClick={() => onDelete(project.id)}
+                  className="text-xs text-red-600 hover:text-red-700"
+                >
+                  Excluir
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

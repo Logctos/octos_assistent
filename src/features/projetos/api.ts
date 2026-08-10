@@ -9,6 +9,7 @@ export async function listProjects(): Promise<Project[]> {
 export async function createProject(input: {
   name: string;
   description: string;
+  category: Project["category"];
 }): Promise<{ error: string | null }> {
   const {
     data: { user },
@@ -23,6 +24,7 @@ export async function createProject(input: {
     user_id: user.id,
     name,
     description: description || null,
+    category: input.category,
   });
 
   return { error: error?.message ?? null };

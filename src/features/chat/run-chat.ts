@@ -96,8 +96,13 @@ const TOOLS: ChatCompletionTool[] = [
         properties: {
           name: { type: "string", description: "Nome do projeto" },
           description: { type: "string", description: "Descrição opcional do projeto" },
+          category: {
+            type: "string",
+            enum: ["trabalho", "estudos"],
+            description: "Categoria do projeto: trabalho ou estudos.",
+          },
         },
-        required: ["name"],
+        required: ["name", "category"],
       },
     },
   },
@@ -106,8 +111,9 @@ const TOOLS: ChatCompletionTool[] = [
     function: {
       name: "list_projects",
       description:
-        "Lista os projetos do usuário, com nome e status (ativo, pausado ou concluído). Use " +
-        "quando o usuário perguntar quais projetos tem, o andamento deles, etc.",
+        "Lista os projetos do usuário, com nome, categoria (trabalho ou estudos) e status " +
+        "(ativo, pausado ou concluído). Use quando o usuário perguntar quais projetos tem, o " +
+        "andamento deles, etc.",
       parameters: { type: "object", properties: {} },
     },
   },
@@ -227,8 +233,10 @@ function buildSystemPrompt() {
     "para alguém ouvindo no carro, e feche com uma frase de encerramento curta. Fique entre 100 e " +
     "180 palavras no total. " +
     "Você também gerencia os projetos do usuário: create_project para criar, list_projects para " +
-    "listar (com status), update_project_status para pausar/concluir/reativar um projeto pelo " +
-    "nome. Use sempre que o usuário mencionar um projeto e o que quer fazer com ele. " +
+    "listar (com categoria e status), update_project_status para pausar/concluir/reativar um " +
+    "projeto pelo nome. Use sempre que o usuário mencionar um projeto e o que quer fazer com ele. " +
+    "Todo projeto novo precisa de uma categoria, trabalho ou estudos — se não estiver óbvio pelo " +
+    "que o usuário descreveu, pergunte antes de chamar create_project (não invente a categoria). " +
     "Você também pode listar os lançamentos financeiros de um mês (list_expenses) e apagar um " +
     "lançamento que o usuário disser que está errado (delete_expense, buscando por trecho da " +
     "descrição). E pode listar os próximos eventos do Google Agenda (list_calendar_events) quando " +
@@ -363,15 +371,17 @@ async function runCreateProject(
     const args = JSON.parse(toolCall.function.arguments) as {
       name: string;
       description?: string;
+      category: Project["category"];
     };
 
     const { error } = await createProject({
       name: args.name,
       description: args.description ?? "",
+      category: args.category,
     });
 
     if (error) return `Erro ao criar projeto: ${error}`;
-    return `Projeto "${args.name}" criado.`;
+    return `Projeto "${args.name}" criado, categoria ${args.category}.`;
   } catch (error) {
     return `Erro ao criar projeto: ${error instanceof Error ? error.message : "falha desconhecida"}`;
   }
@@ -382,7 +392,7 @@ async function runListProjects(): Promise<string> {
   if (projects.length === 0) return "Nenhum projeto cadastrado.";
 
   return projects
-    .map((p) => `${p.name} (${PROJECT_STATUS_LABEL[p.status]})`)
+    .map((p) => `${p.name} (${p.category}, ${PROJECT_STATUS_LABEL[p.status]})`)
     .join(", ");
 }
 

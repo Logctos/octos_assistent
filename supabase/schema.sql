@@ -33,6 +33,20 @@ create table if not exists projects (
   created_at timestamptz not null default now()
 );
 
+-- Separates projects (and, via the chat tool, calendar events) into work vs. study buckets.
+-- Safe to run again on databases that already have `projects` without this column.
+alter table projects add column if not exists category text;
+update projects set category = 'trabalho' where category is null;
+alter table projects alter column category set not null;
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'projects_category_check'
+  ) then
+    alter table projects add constraint projects_category_check check (category in ('trabalho', 'estudos'));
+  end if;
+end $$;
+
 create table if not exists google_calendar_connections (
   user_id uuid primary key references auth.users(id) on delete cascade,
   access_token text not null,
