@@ -56,32 +56,26 @@ export function ProjetosPage() {
 
       <ProjectForm onCreated={refetchProjects} />
 
-      {projects.length === 0 ? (
-        <div className="hud-panel rounded-sm p-4">
-          <p className="py-6 text-center text-sm text-zinc-500">Nenhum projeto cadastrado.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <ProjectCategorySection
-            title="Estudos"
-            projects={projects.filter((p) => p.category === "estudos")}
-            onDelete={handleDelete}
-            onChanged={refetchProjects}
-          />
-          <ProjectCategorySection
-            title="Trabalho"
-            projects={projects.filter((p) => p.category === "trabalho")}
-            onDelete={handleDelete}
-            onChanged={refetchProjects}
-          />
-          <ProjectCategorySection
-            title="Ambas"
-            projects={projects.filter((p) => p.category === "ambas")}
-            onDelete={handleDelete}
-            onChanged={refetchProjects}
-          />
-        </div>
-      )}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <ProjectCategorySection
+          title="Estudos"
+          projects={projects.filter((p) => p.category === "estudos")}
+          onDelete={handleDelete}
+          onChanged={refetchProjects}
+        />
+        <ProjectCategorySection
+          title="Trabalho"
+          projects={projects.filter((p) => p.category === "trabalho")}
+          onDelete={handleDelete}
+          onChanged={refetchProjects}
+        />
+        <ProjectCategorySection
+          title="Ambas"
+          projects={projects.filter((p) => p.category === "ambas")}
+          onDelete={handleDelete}
+          onChanged={refetchProjects}
+        />
+      </div>
     </div>
   );
 }
