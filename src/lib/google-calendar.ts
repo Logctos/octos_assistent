@@ -61,7 +61,7 @@ export async function listUpcomingGoogleCalendarEvents(
 
 export async function createGoogleCalendarEvent(
   accessToken: string,
-  event: { summary: string; start: string; end: string; description?: string }
+  event: { summary: string; start: string; end: string; description?: string; colorId?: string }
 ): Promise<{ htmlLink: string }> {
   const response = await fetch(
     "https://www.googleapis.com/calendar/v3/calendars/primary/events",
@@ -76,6 +76,7 @@ export async function createGoogleCalendarEvent(
         description: event.description,
         start: { dateTime: event.start },
         end: { dateTime: event.end },
+        colorId: event.colorId,
       }),
     }
   );

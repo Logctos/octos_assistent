@@ -18,6 +18,12 @@ import type { Project } from "@/types";
 
 const TIME_ZONE = "America/Sao_Paulo";
 
+/** Google Calendar event colorIds: 9 = Blueberry (trabalho), 10 = Basil (estudos). */
+const EVENT_CATEGORY_COLOR: Record<"trabalho" | "estudos", string> = {
+  trabalho: "9",
+  estudos: "10",
+};
+
 export interface ChatRequestMessage {
   role: "user" | "assistant";
   content: string;
@@ -42,8 +48,13 @@ const TOOLS: ChatCompletionTool[] = [
             description: "Término em ISO 8601 com offset, ex: 2026-08-06T18:00:00-03:00",
           },
           description: { type: "string", description: "Descrição opcional do evento" },
+          category: {
+            type: "string",
+            enum: ["trabalho", "estudos"],
+            description: "Categoria do evento: trabalho ou estudos.",
+          },
         },
-        required: ["summary", "start", "end"],
+        required: ["summary", "start", "end", "category"],
       },
     },
   },
@@ -198,7 +209,9 @@ function buildSystemPrompt() {
     "Você tem uma ferramenta para criar eventos no Google Agenda do usuário — use-a sempre que ele " +
     "pedir para agendar, marcar ou criar algo na agenda/calendário. Calcule os horários em ISO 8601 " +
     "com esse offset a partir da data/hora atual acima. Se o usuário não informar o horário de " +
-    "término, assuma 1 hora de duração. " +
+    "término, assuma 1 hora de duração. Todo evento precisa de uma categoria, trabalho ou estudos — " +
+    "se não estiver óbvio pelo que o usuário descreveu, pergunte antes de chamar a ferramenta (não " +
+    "invente a categoria). " +
     "Você também tem uma ferramenta para registrar despesas e receitas financeiras — use-a sempre " +
     "que o usuário disser que gastou, pagou, recebeu ou ganhou dinheiro, ou pedir para lançar algo " +
     `financeiro. Categorias já cadastradas (grupo e subcategorias): ${formatCategoryTree()}. ` +
@@ -284,10 +297,17 @@ async function runCreateCalendarEvent(
       start: string;
       end: string;
       description?: string;
+      category: "trabalho" | "estudos";
     };
 
-    const event = await createGoogleCalendarEvent(connection.access_token, args);
-    return `Evento criado com sucesso: "${args.summary}" (${args.start} até ${args.end}). Link: ${event.htmlLink}`;
+    const event = await createGoogleCalendarEvent(connection.access_token, {
+      ...args,
+      colorId: EVENT_CATEGORY_COLOR[args.category],
+    });
+    return (
+      `Evento criado com sucesso: "${args.summary}" (${args.start} até ${args.end}), ` +
+      `categoria ${args.category}. Link: ${event.htmlLink}`
+    );
   } catch (error) {
     return `Erro ao criar evento: ${error instanceof Error ? error.message : "falha desconhecida"}`;
   }
