@@ -78,7 +78,12 @@ export function ChatPanel({
   } = useHandGesture({
     enabled: gestureEnabled,
     onGrab: () => {
-      if (!isLoading && !isListening && isSpeechInputSupported) startListening();
+      if (isLoading || isListening || !isSpeechInputSupported) return;
+      if (voiceEnabled && isSpeechOutputSupported) {
+        speak("Octos ativado, pode falar.", "pt-BR", startListening);
+      } else {
+        startListening();
+      }
     },
   });
 
