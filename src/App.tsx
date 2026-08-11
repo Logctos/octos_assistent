@@ -9,6 +9,7 @@ import { ChatRoute } from "@/routes/chat";
 import { DespesasPage } from "@/routes/despesas";
 import { ProjetosPage } from "@/routes/projetos";
 import { SaudePage } from "@/routes/saude";
+import { EstudosPage } from "@/routes/estudos";
 
 export function App() {
   return (
@@ -37,6 +38,7 @@ export function App() {
             <Route path="/app" element={<ChatRoute />} />
             <Route path="/despesas" element={<DespesasPage />} />
             <Route path="/projetos" element={<ProjetosPage />} />
+            <Route path="/estudos" element={<EstudosPage />} />
             <Route path="/saude" element={<SaudePage />} />
           </Route>
         </Routes>

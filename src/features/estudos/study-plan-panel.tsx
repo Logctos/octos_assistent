@@ -110,6 +110,22 @@ export function StudyPlanPanel() {
       </div>
 
       <div className="hud-panel flex flex-col gap-2 rounded-sm p-4">
+        <span className="hud-eyebrow">Eficiência atingida</span>
+        <div className="flex items-center gap-4">
+          <span className="font-outfit text-3xl font-bold text-[#00d4ff]">{stats.efficiencyPct}%</span>
+          <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/5">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-[#00d4ff] transition-[width] duration-500"
+              style={{ width: `${stats.efficiencyPct}%` }}
+            />
+          </div>
+        </div>
+        <p className="text-xs text-zinc-500">
+          {stats.completedCount} de {stats.completedCount + stats.pendingCount} sessões concluídas
+        </p>
+      </div>
+
+      <div className="hud-panel flex flex-col gap-2 rounded-sm p-4">
         <span className="hud-eyebrow">Sessões pendentes ({pending.length})</span>
         {pending.length === 0 ? (
           <p className="py-4 text-center text-sm text-zinc-400">

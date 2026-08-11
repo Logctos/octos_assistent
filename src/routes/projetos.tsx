@@ -7,13 +7,9 @@ import { ProjectStatusSelect } from "@/components/project-status-select";
 import { GoogleCalendarPanel } from "@/components/google-calendar-panel";
 import { getGoogleCalendarConnection, listUpcomingGoogleCalendarEvents } from "@/lib/google-calendar";
 import type { GoogleCalendarEvent } from "@/lib/google-calendar";
-import { StudyPlanPanel } from "@/features/estudos/study-plan-panel";
-
-type ProjetosTab = "projetos" | "estudos";
 
 export function ProjetosPage() {
   const { user } = useAuth();
-  const [tab, setTab] = useState<ProjetosTab>("projetos");
   const [projects, setProjects] = useState<Project[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<GoogleCalendarEvent[]>([]);
   const [calendarConnected, setCalendarConnected] = useState(false);
@@ -51,69 +47,35 @@ export function ProjetosPage() {
 
   return (
     <div className="flex w-full max-w-2xl flex-col gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-col gap-1.5">
-          <span className="hud-eyebrow">Gestão de projetos</span>
-          <h1 className="font-outfit text-2xl font-bold tracking-tight text-zinc-50">
-            {tab === "projetos" ? "Projetos" : "Plano de estudos"}
-          </h1>
-        </div>
-        <div className="flex items-center gap-1 text-xs">
-          <button
-            type="button"
-            onClick={() => setTab("projetos")}
-            className={
-              tab === "projetos" ? "hud-button rounded-sm px-3 py-1.5" : "rounded-sm px-3 py-1.5 text-zinc-400"
-            }
-          >
-            Projetos
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab("estudos")}
-            className={
-              tab === "estudos" ? "hud-button rounded-sm px-3 py-1.5" : "rounded-sm px-3 py-1.5 text-zinc-400"
-            }
-          >
-            🎮 Plano de estudos
-          </button>
-        </div>
+      <div className="flex flex-col gap-1.5">
+        <span className="hud-eyebrow">Gestão de projetos</span>
+        <h1 className="font-outfit text-2xl font-bold tracking-tight text-zinc-50">Projetos</h1>
       </div>
 
-      {tab === "projetos" ? (
-        <>
-          <GoogleCalendarPanel
-            connected={calendarConnected}
-            events={calendarEvents}
-            error={calendarError}
-          />
+      <GoogleCalendarPanel connected={calendarConnected} events={calendarEvents} error={calendarError} />
 
-          <ProjectForm onCreated={refetchProjects} />
+      <ProjectForm onCreated={refetchProjects} />
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <ProjectCategorySection
-              title="Estudos"
-              projects={projects.filter((p) => p.category === "estudos")}
-              onDelete={handleDelete}
-              onChanged={refetchProjects}
-            />
-            <ProjectCategorySection
-              title="Trabalho"
-              projects={projects.filter((p) => p.category === "trabalho")}
-              onDelete={handleDelete}
-              onChanged={refetchProjects}
-            />
-            <ProjectCategorySection
-              title="Ambas"
-              projects={projects.filter((p) => p.category === "ambas")}
-              onDelete={handleDelete}
-              onChanged={refetchProjects}
-            />
-          </div>
-        </>
-      ) : (
-        <StudyPlanPanel />
-      )}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <ProjectCategorySection
+          title="Estudos"
+          projects={projects.filter((p) => p.category === "estudos")}
+          onDelete={handleDelete}
+          onChanged={refetchProjects}
+        />
+        <ProjectCategorySection
+          title="Trabalho"
+          projects={projects.filter((p) => p.category === "trabalho")}
+          onDelete={handleDelete}
+          onChanged={refetchProjects}
+        />
+        <ProjectCategorySection
+          title="Ambas"
+          projects={projects.filter((p) => p.category === "ambas")}
+          onDelete={handleDelete}
+          onChanged={refetchProjects}
+        />
+      </div>
     </div>
   );
 }

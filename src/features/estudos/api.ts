@@ -122,11 +122,14 @@ export interface StudyStats {
   streak: number;
   completedCount: number;
   pendingCount: number;
+  /** % of all scheduled sessions (across the whole history, not just this week) marked completed. */
+  efficiencyPct: number;
 }
 
 export function computeStudyStats(sessions: StudySession[]): StudyStats {
   const completed = sessions.filter((s) => s.completed);
   const totalXp = completed.reduce((sum, s) => sum + s.xp_value, 0);
+  const pendingCount = sessions.length - completed.length;
 
   return {
     totalXp,
@@ -135,7 +138,9 @@ export function computeStudyStats(sessions: StudySession[]): StudyStats {
     xpForNextLevel: XP_PER_LEVEL,
     streak: computeStreak(completed),
     completedCount: completed.length,
-    pendingCount: sessions.length - completed.length,
+    pendingCount,
+    efficiencyPct:
+      sessions.length === 0 ? 0 : Math.round((completed.length / sessions.length) * 100),
   };
 }
 
