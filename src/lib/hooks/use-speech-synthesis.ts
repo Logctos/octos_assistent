@@ -1,26 +1,60 @@
 import { useEffect, useRef, useState } from "react";
 
+/** Best pt-BR voice available, preferring non-"novelty" local voices. iOS Safari often stays
+ *  silent (no error, no audio) when an utterance has no explicit `voice` and relies only on
+ *  `lang`, especially before the async `voiceschanged` event has ever fired. */
+function pickPortugueseVoice(): SpeechSynthesisVoice | null {
+  const voices = window.speechSynthesis.getVoices();
+  if (voices.length === 0) return null;
+
+  const ptVoices = voices.filter((v) => v.lang?.toLowerCase().startsWith("pt"));
+  if (ptVoices.length === 0) return null;
+
+  return (
+    ptVoices.find((v) => v.lang.toLowerCase() === "pt-br") ??
+    ptVoices.find((v) => v.localService) ??
+    ptVoices[0]
+  );
+}
+
 export function useSpeechSynthesis() {
   const [isSupported] = useState(() => "speechSynthesis" in window);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const voiceRef = useRef<SpeechSynthesisVoice | null>(null);
 
   useEffect(() => {
     if (!isSupported) return;
+
+    // Voices load asynchronously (especially on iOS) — grab them as soon as they're ready,
+    // and also try immediately in case they're already cached from a previous page load.
+    function loadVoice() {
+      voiceRef.current = pickPortugueseVoice();
+    }
+    loadVoice();
+    window.speechSynthesis.addEventListener("voiceschanged", loadVoice);
 
     // Mobile browsers (iOS Safari, most Android browsers) only let speechSynthesis play
     // if a call happens synchronously inside a user gesture. Our real speak() call fires
     // after an async fetch/stream finishes, so the original tap is long gone by then and
     // audio gets silently blocked. Priming with a silent utterance on the very first tap
-    // unlocks the API for the rest of the session.
+    // unlocks the API for the rest of the session. iOS can also leave the engine "paused"
+    // after the app was backgrounded, so resume() runs on every tap, not just the first.
     function unlock() {
-      const primer = new SpeechSynthesisUtterance(" ");
-      primer.volume = 0;
-      window.speechSynthesis.speak(primer);
+      window.speechSynthesis.resume();
+      if (!sessionStorage.getItem("octos:speech-unlocked")) {
+        const primer = new SpeechSynthesisUtterance(" ");
+        primer.volume = 0;
+        window.speechSynthesis.speak(primer);
+        sessionStorage.setItem("octos:speech-unlocked", "true");
+      }
     }
 
-    document.addEventListener("pointerdown", unlock, { once: true });
-    return () => document.removeEventListener("pointerdown", unlock);
+    document.addEventListener("pointerdown", unlock);
+    return () => {
+      document.removeEventListener("pointerdown", unlock);
+      window.speechSynthesis.removeEventListener("voiceschanged", loadVoice);
+    };
   }, [isSupported]);
 
   function speak(text: string, lang = "pt-BR", onEnd?: () => void) {
@@ -29,6 +63,8 @@ export function useSpeechSynthesis() {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = lang;
+    if (!voiceRef.current) voiceRef.current = pickPortugueseVoice();
+    if (voiceRef.current) utterance.voice = voiceRef.current;
     utterance.onstart = () => setIsSpeaking(true);
     utterance.onend = () => {
       setIsSpeaking(false);
