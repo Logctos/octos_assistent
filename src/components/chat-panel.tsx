@@ -8,6 +8,7 @@ import { DateTile, WeatherTile, NewsTile, ActivitiesTile, AgentsTile } from "@/c
 import type { NewsItem } from "@/lib/tech-news";
 import { runChat } from "@/features/chat/run-chat";
 import { loadChatHistory, saveChatMessage } from "@/features/chat/api";
+import { NextStudyCard } from "@/features/estudos/next-study-card";
 
 const API_KEY_STORAGE_KEY = "octos:openai-api-key";
 const VOICE_ENABLED_STORAGE_KEY = "octos:voice-enabled";
@@ -244,13 +245,13 @@ export function ChatPanel({
       </div>
 
       <div className="grid flex-1 grid-cols-1 gap-4 lg:grid-cols-[260px_1fr_260px]">
-        <div className="flex flex-col gap-4 lg:justify-center">
+        <div className="order-1 flex flex-col gap-4 lg:order-1 lg:justify-center">
           <DateTile dateLabel={dateLabel} />
           <WeatherTile />
           <NewsTile news={news} />
         </div>
 
-        <div className="flex flex-col items-center justify-center gap-3 py-6">
+        <div className="order-3 flex flex-col items-center justify-center gap-3 py-6 lg:order-2">
           <span className="arc-reactor" />
           <JarvisFrame>
             <JarvisOrbAvatar status={avatarStatus} />
@@ -258,9 +259,10 @@ export function ChatPanel({
           <span className="hud-eyebrow">{statusLabel}</span>
         </div>
 
-        <div className="flex flex-col gap-4 lg:justify-center">
-          <ActivitiesTile activities={activities} />
+        <div className="order-2 flex flex-col gap-4 lg:order-3 lg:justify-center">
           <AgentsTile agents={agents} />
+          <ActivitiesTile activities={activities} />
+          <NextStudyCard />
         </div>
       </div>
 

@@ -39,27 +39,27 @@ export function NextStudyCard() {
   if (nextSession === undefined || nextSession === null) return null;
 
   return (
-    <div className="hud-panel flex w-full flex-col gap-2 rounded-sm p-4">
-      <span className="hud-eyebrow">O que estudar agora</span>
+    <div className="hud-panel rounded-sm p-4">
+      <h2 className="hud-eyebrow">O que estudar agora</h2>
       <button
         type="button"
         onClick={handleToggle}
-        className="flex items-center justify-between gap-3 text-left"
+        className="mt-2 flex w-full items-center justify-between gap-2 text-left"
       >
-        <div>
-          <p className="font-outfit text-lg font-semibold text-zinc-50">{nextSession.topic}</p>
-          <p className="text-xs text-zinc-400">
+        <div className="min-w-0">
+          <p className="truncate text-sm text-zinc-200">{nextSession.topic}</p>
+          <p className="text-xs text-zinc-500">
             {formatSessionDate(nextSession.session_date)} · {nextSession.duration_minutes} min · +
             {nextSession.xp_value} XP
           </p>
         </div>
         <span className="shrink-0 text-xs text-[#00d4ff]">
-          {isOpen ? "Fechar ▴" : "Ver resumo ▾"}
+          {isOpen ? "Fechar ▴" : "Ver ▾"}
         </span>
       </button>
 
       {isOpen && (
-        <div className="mt-1 border-t border-white/10 pt-2">
+        <div className="mt-2 border-t border-white/10 pt-2">
           {isLoadingMaterial ? (
             <p className="text-sm text-zinc-400">Carregando…</p>
           ) : material ? (
