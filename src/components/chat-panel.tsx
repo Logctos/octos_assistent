@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import type { ChatMessage } from "@/types";
 import { useSpeechRecognition } from "@/lib/hooks/use-speech-recognition";
 import { useSpeechSynthesis } from "@/lib/hooks/use-speech-synthesis";
+import { useHandGesture } from "@/lib/hooks/use-hand-gesture";
 import { JarvisOrbAvatar } from "@/components/jarvis-orb-avatar";
 import { JarvisFrame } from "@/components/jarvis-frame";
 import { DateTile, WeatherTile, NewsTile, ActivitiesTile, AgentsTile } from "@/components/hud-tiles";
@@ -13,6 +15,7 @@ import { NextStudyCard } from "@/features/estudos/next-study-card";
 const API_KEY_STORAGE_KEY = "octos:openai-api-key";
 const VOICE_ENABLED_STORAGE_KEY = "octos:voice-enabled";
 const HANDS_FREE_STORAGE_KEY = "octos:hands-free";
+const GESTURE_STORAGE_KEY = "octos:gesture-enabled";
 const MODEL_HISTORY_LIMIT = 20;
 
 interface Activity {
@@ -48,7 +51,11 @@ export function ChatPanel({
   const [handsFreeEnabled, setHandsFreeEnabled] = useState(
     () => localStorage.getItem(HANDS_FREE_STORAGE_KEY) === "true"
   );
+  const [gestureEnabled, setGestureEnabled] = useState(
+    () => localStorage.getItem(GESTURE_STORAGE_KEY) === "true"
+  );
   const bottomRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   const {
     isSupported: isSpeechOutputSupported,
@@ -64,6 +71,16 @@ export function ChatPanel({
         if (isFinal) sendMessage(transcript);
       },
     });
+  const {
+    isSupported: isGestureSupported,
+    isReady: isGestureReady,
+    error: gestureError,
+  } = useHandGesture({
+    enabled: gestureEnabled,
+    onGrab: () => {
+      if (!isLoading && !isListening && isSpeechInputSupported) startListening();
+    },
+  });
 
   useEffect(() => {
     loadChatHistory().then((history) => {
@@ -111,6 +128,12 @@ export function ChatPanel({
     if (!next) stopListening();
   }
 
+  function handleGestureToggle() {
+    const next = !gestureEnabled;
+    setGestureEnabled(next);
+    localStorage.setItem(GESTURE_STORAGE_KEY, String(next));
+  }
+
   async function sendMessage(content: string) {
     const trimmed = content.trim();
     if (!trimmed || isLoading) return;
@@ -150,7 +173,8 @@ export function ChatPanel({
               m.id === assistantMessage.id ? { ...m, content: assistantContent } : m
             )
           );
-        }
+        },
+        navigate
       );
 
       saveChatMessage("assistant", assistantContent);
@@ -191,6 +215,7 @@ export function ChatPanel({
               {lastSpeechError && (
                 <span className="text-red-400"> · erro de voz: {lastSpeechError}</span>
               )}
+              {gestureError && <span className="text-red-400"> · erro de gesto: {gestureError}</span>}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -226,6 +251,21 @@ export function ChatPanel({
                 }
               >
                 {handsFreeEnabled ? "🤝 Mãos-livres" : "🤝"}
+              </button>
+            )}
+            {isSpeechInputSupported && isGestureSupported && (
+              <button
+                type="button"
+                onClick={handleGestureToggle}
+                aria-label={gestureEnabled ? "Desativar gatilho por gesto" : "Ativar gatilho por gesto"}
+                title="Abra e feche a mão na frente da câmera para começar a falar"
+                className={
+                  gestureEnabled
+                    ? "rounded-sm border border-[#00d4ff]/40 bg-[#00d4ff]/10 px-2 py-1 text-xs text-[#7fe9ff]"
+                    : "hud-button rounded-sm px-2 py-1 text-xs"
+                }
+              >
+                {gestureEnabled ? `✋ Gesto${isGestureReady ? "" : "…"}` : "✋"}
               </button>
             )}
             <button

@@ -16,6 +16,7 @@
     "@fontsource/inter": "^5.3.0",
     "@fontsource/orbitron": "^5.3.0",
     "@fontsource/outfit": "^5.3.0",
+    "@mediapipe/tasks-vision": "^1.0.1",
     "@splinetool/react-spline": "^4.1.0",
     "@splinetool/runtime": "^1.12.98",
     "@supabase/supabase-js": "^2.112.1",

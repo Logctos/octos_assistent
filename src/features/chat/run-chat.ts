@@ -353,7 +353,36 @@ const TOOLS: ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "navigate_page",
+      description:
+        "Muda a página que o usuário está vendo no app. Use quando ele pedir para ir, abrir, " +
+        "mudar ou navegar para outra tela (início/chat, despesas, projetos, estudos ou saúde).",
+      parameters: {
+        type: "object",
+        properties: {
+          page: {
+            type: "string",
+            enum: ["inicio", "despesas", "projetos", "estudos", "saude"],
+            description:
+              "Página de destino: inicio (chat), despesas, projetos, estudos ou saude.",
+          },
+        },
+        required: ["page"],
+      },
+    },
+  },
 ];
+
+const PAGE_ROUTES: Record<string, { path: string; label: string }> = {
+  inicio: { path: "/app", label: "Início" },
+  despesas: { path: "/despesas", label: "Despesas" },
+  projetos: { path: "/projetos", label: "Projetos" },
+  estudos: { path: "/estudos", label: "Estudos" },
+  saude: { path: "/saude", label: "Saúde" },
+};
 
 function formatCategoryTree() {
   return (Object.entries(FINANCE_CATEGORIES) as [TransactionType, Record<string, string[]>][])
@@ -433,13 +462,17 @@ function buildSystemPrompt() {
     "diário dele. Se ele perguntar o que já estudou/fez, use list_daily_summaries. " +
     "Para todas as ferramentas de listagem, narre o " +
     "resultado em texto corrido e curto, não como uma lista técnica — e se a lista vier vazia, diga " +
-    "isso de forma natural."
+    "isso de forma natural. " +
+    "Você também pode mudar a página que o usuário está vendo, com navigate_page (inicio, " +
+    "despesas, projetos, estudos ou saude). Use sempre que ele pedir para ir, abrir ou navegar " +
+    "para outra tela."
   );
 }
 
 async function runTool(
   toolCall: ChatCompletionMessageFunctionToolCall,
-  openai: OpenAI
+  openai: OpenAI,
+  navigate?: (path: string) => void
 ): Promise<string> {
   if (toolCall.function.name === "create_calendar_event") {
     return runCreateCalendarEvent(toolCall);
@@ -505,7 +538,24 @@ async function runTool(
     return runListDailySummaries();
   }
 
+  if (toolCall.function.name === "navigate_page") {
+    return runNavigatePage(toolCall, navigate);
+  }
+
   return `Erro: ferramenta desconhecida "${toolCall.function.name}"`;
+}
+
+async function runNavigatePage(
+  toolCall: ChatCompletionMessageFunctionToolCall,
+  navigate?: (path: string) => void
+): Promise<string> {
+  const args = JSON.parse(toolCall.function.arguments || "{}") as { page?: string };
+  const route = args.page ? PAGE_ROUTES[args.page] : undefined;
+  if (!route) return `Erro: página desconhecida "${args.page}".`;
+  if (!navigate) return "Erro: não foi possível navegar agora.";
+
+  navigate(route.path);
+  return `Abrindo ${route.label}.`;
 }
 
 async function runCreateCalendarEvent(
@@ -1174,7 +1224,8 @@ async function streamCompletion(
 export async function runChat(
   history: ChatRequestMessage[],
   apiKey: string,
-  onToken: (chunk: string) => void
+  onToken: (chunk: string) => void,
+  navigate?: (path: string) => void
 ): Promise<void> {
   if (!apiKey) {
     throw new Error(
@@ -1198,7 +1249,7 @@ export async function runChat(
       conversation.push({
         role: "tool",
         tool_call_id: toolCall.id,
-        content: await runTool(toolCall, openai),
+        content: await runTool(toolCall, openai, navigate),
       });
     }
 
