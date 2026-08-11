@@ -1,7 +1,14 @@
 import { useEffect, useState } from "react";
 import type { HealthLog } from "@/types";
 import { listRecentHealthLogs } from "@/features/saude/api";
-import { estimateTrainingCalories, RECOMMENDED_SLEEP_HOURS } from "@/lib/health-metrics";
+import { computeHealthScore, estimateTrainingCalories, RECOMMENDED_SLEEP_HOURS } from "@/lib/health-metrics";
+
+const SCORE_COLOR: Record<string, string> = {
+  Excelente: "text-emerald-400",
+  Bom: "text-[#7fe9ff]",
+  "Atenção": "text-amber-400",
+  Preocupante: "text-red-400",
+};
 
 const SUMMARY_WINDOW_DAYS = 7;
 
@@ -51,9 +58,19 @@ export function HealthSummaryCard() {
         (weightEntries[0].weight_kg as number)
       : null;
 
+  const score = computeHealthScore({ sessionsPerWeek: sessionCount, avgSleepHours: avgSleep });
+
   return (
     <div className="hud-panel rounded-sm p-4">
-      <h2 className="hud-eyebrow">Estado de saúde (7 dias)</h2>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="hud-eyebrow">Estado de saúde (7 dias)</h2>
+        {score && (
+          <span className={`font-outfit text-lg font-bold leading-none ${SCORE_COLOR[score.label]}`}>
+            {score.score}
+            <span className="ml-1 text-xs font-normal text-zinc-500">{score.label}</span>
+          </span>
+        )}
+      </div>
       <div className="mt-2 flex flex-col gap-1.5 text-sm text-zinc-300">
         <p>
           🥋 {sessionCount > 0 ? (
