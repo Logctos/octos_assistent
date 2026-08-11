@@ -71,19 +71,19 @@ export function WeatherWidget() {
   }, []);
 
   if (state.status === "loading") {
-    return <p className="text-sm text-zinc-600">Localizando…</p>;
+    return <p className="text-sm text-zinc-400">Localizando…</p>;
   }
 
   if (state.status === "unsupported") {
-    return <p className="text-sm text-zinc-600">Geolocalização não suportada</p>;
+    return <p className="text-sm text-zinc-400">Geolocalização não suportada</p>;
   }
 
   if (state.status === "denied") {
-    return <p className="text-sm text-zinc-600">Permissão de localização negada</p>;
+    return <p className="text-sm text-zinc-400">Permissão de localização negada</p>;
   }
 
   if (state.status === "error") {
-    return <p className="text-sm text-red-600">{state.message}</p>;
+    return <p className="text-sm text-red-400">{state.message}</p>;
   }
 
   const info = WEATHER_INFO[state.code] ?? { label: "—", icon: "🌡️" };
@@ -92,7 +92,7 @@ export function WeatherWidget() {
     <div className="flex items-center gap-2">
       <span className="text-2xl leading-none">{info.icon}</span>
       <div>
-        <p className="text-lg text-zinc-900">{state.temperature}°C</p>
+        <p className="text-lg text-zinc-100">{state.temperature}°C</p>
         <p className="text-xs text-zinc-500">{info.label}</p>
       </div>
     </div>

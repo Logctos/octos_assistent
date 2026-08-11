@@ -14,6 +14,14 @@ import { createExpense, deleteExpense, listExpensesForMonth } from "@/features/d
 import { FINANCE_CATEGORIES, type TransactionType } from "@/lib/finance-categories";
 import { getTechNews } from "@/lib/tech-news";
 import { createProject, listProjects, updateProjectStatus } from "@/features/projetos/api";
+import {
+  completeStudySession,
+  computeStudyStats,
+  createStudySessions,
+  findPendingSessionByTopic,
+  listStudySessions,
+  type NewStudySession,
+} from "@/features/estudos/api";
 import type { Project } from "@/types";
 
 const TIME_ZONE = "America/Sao_Paulo";
@@ -172,6 +180,69 @@ const TOOLS: ChatCompletionTool[] = [
   {
     type: "function",
     function: {
+      name: "create_study_plan",
+      description:
+        "Monta um plano de estudos gamificado a partir de temas: agenda as sessões no Google " +
+        "Agenda e cria as sessões com XP no sistema de gamificação. Use quando o usuário pedir um " +
+        "plano/cronograma de estudos ou disser os temas que quer estudar.",
+      parameters: {
+        type: "object",
+        properties: {
+          topics: {
+            type: "array",
+            items: { type: "string" },
+            description: "Temas a estudar, ex: [\"React\", \"Inglês\"]. As sessões alternam entre eles.",
+          },
+          sessions_per_week: {
+            type: "number",
+            description: "Quantas sessões por semana. Padrão: 3.",
+          },
+          session_minutes: {
+            type: "number",
+            description: "Duração de cada sessão em minutos. Padrão: 45.",
+          },
+          weeks: {
+            type: "number",
+            description: "Duração do plano em semanas. Padrão: 4.",
+          },
+        },
+        required: ["topics"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "complete_study_session",
+      description:
+        "Marca uma sessão de estudo pendente como concluída e dá o XP dela. Use quando o usuário " +
+        "disser que terminou/concluiu de estudar um tema.",
+      parameters: {
+        type: "object",
+        properties: {
+          topic: {
+            type: "string",
+            description: "Tema estudado, para achar a sessão pendente correspondente.",
+          },
+        },
+        required: ["topic"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_study_progress",
+      description:
+        "Consulta o progresso do plano de estudos: XP total, nível, sequência de dias (streak) e " +
+        "sessões pendentes/concluídas. Use quando o usuário perguntar seu nível, XP, sequência ou " +
+        "progresso nos estudos.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "list_calendar_events",
       description:
         "Lista os próximos eventos do Google Agenda do usuário. Use quando ele perguntar o que " +
@@ -241,7 +312,17 @@ function buildSystemPrompt() {
     "Você também pode listar os lançamentos financeiros de um mês (list_expenses) e apagar um " +
     "lançamento que o usuário disser que está errado (delete_expense, buscando por trecho da " +
     "descrição). E pode listar os próximos eventos do Google Agenda (list_calendar_events) quando " +
-    "o usuário perguntar o que tem na agenda. Para todas as ferramentas de listagem, narre o " +
+    "o usuário perguntar o que tem na agenda. " +
+    "Você também monta planos de estudo gamificados: quando o usuário der os temas que quer " +
+    "estudar (ou pedir um plano/cronograma de estudos), use create_study_plan — ela já agenda as " +
+    "sessões no Google Agenda e cria o XP de cada uma. Se ele não informar frequência, duração ou " +
+    "quantidade de semanas, use os padrões (3x por semana, 45 min por sessão, 4 semanas) sem " +
+    "perguntar, e avise os padrões usados na resposta. Cada sessão vale 20 XP e sobe de nível a " +
+    "cada 100 XP. Quando o usuário disser que terminou de estudar um tema, use " +
+    "complete_study_session (pelo nome do tema) para dar o XP e contar nível/sequência " +
+    "atualizados de forma comemorativa, tipo jogo. Use get_study_progress quando ele perguntar " +
+    "seu nível, XP, sequência (streak) ou progresso nos estudos. " +
+    "Para todas as ferramentas de listagem, narre o " +
     "resultado em texto corrido e curto, não como uma lista técnica — e se a lista vier vazia, diga " +
     "isso de forma natural."
   );
@@ -282,6 +363,18 @@ async function runTool(toolCall: ChatCompletionMessageFunctionToolCall): Promise
 
   if (toolCall.function.name === "list_calendar_events") {
     return runListCalendarEvents(toolCall);
+  }
+
+  if (toolCall.function.name === "create_study_plan") {
+    return runCreateStudyPlan(toolCall);
+  }
+
+  if (toolCall.function.name === "complete_study_session") {
+    return runCompleteStudySession(toolCall);
+  }
+
+  if (toolCall.function.name === "get_study_progress") {
+    return runGetStudyProgress();
   }
 
   return `Erro: ferramenta desconhecida "${toolCall.function.name}"`;
@@ -509,6 +602,171 @@ async function runListCalendarEvents(
   } catch (error) {
     return `Erro ao buscar agenda: ${error instanceof Error ? error.message : "falha desconhecida"}`;
   }
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
+/** Builds the real UTC instant for a given wall-clock date/time in São Paulo (fixed UTC-3, no DST since 2019). */
+function localSaoPauloDate(year: number, month: number, day: number, hour: number, minute: number) {
+  return new Date(Date.UTC(year, month - 1, day, hour + 3, minute));
+}
+
+/** Shifts a São Paulo instant back to its local wall-clock numbers, readable via the UTC getters. */
+function toSaoPauloWallClock(instant: Date) {
+  return new Date(instant.getTime() - 3 * 60 * 60 * 1000);
+}
+
+function toSaoPauloIso(instant: Date) {
+  const local = toSaoPauloWallClock(instant);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return (
+    `${local.getUTCFullYear()}-${pad(local.getUTCMonth() + 1)}-${pad(local.getUTCDate())}` +
+    `T${pad(local.getUTCHours())}:${pad(local.getUTCMinutes())}:00-03:00`
+  );
+}
+
+function toSaoPauloDateOnly(instant: Date) {
+  const local = toSaoPauloWallClock(instant);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${local.getUTCFullYear()}-${pad(local.getUTCMonth() + 1)}-${pad(local.getUTCDate())}`;
+}
+
+async function runCreateStudyPlan(toolCall: ChatCompletionMessageFunctionToolCall): Promise<string> {
+  try {
+    const args = JSON.parse(toolCall.function.arguments) as {
+      topics: string[];
+      sessions_per_week?: number;
+      session_minutes?: number;
+      weeks?: number;
+    };
+
+    const topics = (args.topics ?? []).map((t) => t.trim()).filter(Boolean);
+    if (topics.length === 0) return "Erro: informe ao menos um tema para o plano de estudos.";
+
+    const sessionsPerWeek = clamp(Math.round(args.sessions_per_week ?? 3), 1, 7);
+    const sessionMinutes = clamp(Math.round(args.session_minutes ?? 45), 15, 240);
+    const weeks = clamp(Math.round(args.weeks ?? 4), 1, 12);
+    const totalSessions = Math.min(sessionsPerWeek * weeks, 60);
+    const intervalDays = Math.max(1, Math.round(7 / sessionsPerWeek));
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return "Erro: usuário não autenticado.";
+
+    const connection = await getGoogleCalendarConnection(user.id);
+
+    const todaySP = toSaoPauloWallClock(new Date());
+    const baseYear = todaySP.getUTCFullYear();
+    const baseMonth = todaySP.getUTCMonth() + 1;
+    const baseDay = todaySP.getUTCDate() + 1; // start tomorrow
+
+    const planLabel = `Estudos: ${topics.join(", ")}`;
+    const sessionsToInsert: NewStudySession[] = [];
+    let createdEvents = 0;
+
+    for (let i = 0; i < totalSessions; i++) {
+      const topic = topics[i % topics.length];
+      const start = localSaoPauloDate(baseYear, baseMonth, baseDay + i * intervalDays, 19, 0);
+      const end = new Date(start.getTime() + sessionMinutes * 60_000);
+
+      let calendarLink: string | null = null;
+      if (connection) {
+        try {
+          const event = await createGoogleCalendarEvent(connection.access_token, {
+            summary: `Estudo: ${topic}`,
+            start: toSaoPauloIso(start),
+            end: toSaoPauloIso(end),
+            description: `Sessão do plano de estudos gamificado (${planLabel}). Vale ${20} XP.`,
+            colorId: EVENT_CATEGORY_COLOR.estudos,
+          });
+          calendarLink = event.htmlLink;
+          createdEvents++;
+        } catch {
+          // Segue criando as demais sessões mesmo se um evento específico falhar.
+        }
+      }
+
+      sessionsToInsert.push({
+        planLabel,
+        topic,
+        sessionDate: toSaoPauloDateOnly(start),
+        durationMinutes: sessionMinutes,
+        xpValue: 20,
+        calendarEventLink: calendarLink,
+      });
+    }
+
+    const { error } = await createStudySessions(sessionsToInsert);
+    if (error) return `Erro ao salvar o plano de estudos: ${error}`;
+
+    const calendarNote = connection
+      ? `${createdEvents} evento(s) criados no Google Agenda.`
+      : "O Google Agenda não está conectado, então as sessões foram salvas sem eventos na agenda.";
+
+    return (
+      `Plano de estudos criado: ${totalSessions} sessões de ${sessionMinutes} min, ` +
+      `${sessionsPerWeek}x por semana por ${weeks} semana(s), alternando entre ${topics.join(", ")}, ` +
+      `começando amanhã. Cada sessão vale 20 XP. ${calendarNote}`
+    );
+  } catch (error) {
+    return `Erro ao criar plano de estudos: ${error instanceof Error ? error.message : "falha desconhecida"}`;
+  }
+}
+
+async function runCompleteStudySession(
+  toolCall: ChatCompletionMessageFunctionToolCall
+): Promise<string> {
+  try {
+    const args = JSON.parse(toolCall.function.arguments || "{}") as { topic?: string };
+    const session = await findPendingSessionByTopic(args.topic ?? "");
+    if (!session) {
+      return (
+        "Erro: não encontrei nenhuma sessão de estudo pendente" +
+        (args.topic ? ` para "${args.topic}"` : "") +
+        "."
+      );
+    }
+
+    const { error } = await completeStudySession(session.id);
+    if (error) return `Erro ao concluir a sessão: ${error}`;
+
+    const sessions = await listStudySessions();
+    const stats = computeStudyStats(sessions);
+
+    return (
+      `Sessão "${session.topic}" concluída! +${session.xp_value} XP. ` +
+      `Total: ${stats.totalXp} XP, nível ${stats.level} (${stats.xpIntoLevel}/${stats.xpForNextLevel} ` +
+      `para o próximo), sequência de ${stats.streak} dia(s). Faltam ${stats.pendingCount} sessão(ões) ` +
+      "no plano."
+    );
+  } catch (error) {
+    return `Erro ao concluir sessão: ${error instanceof Error ? error.message : "falha desconhecida"}`;
+  }
+}
+
+async function runGetStudyProgress(): Promise<string> {
+  const sessions = await listStudySessions();
+  if (sessions.length === 0) {
+    return "Ainda não existe nenhum plano de estudos. Diga os temas que quer estudar que eu monto um.";
+  }
+
+  const stats = computeStudyStats(sessions);
+  const nextPending = sessions
+    .filter((s) => !s.completed)
+    .sort((a, b) => a.session_date.localeCompare(b.session_date))[0];
+
+  const nextNote = nextPending
+    ? `Próxima sessão: ${nextPending.topic} em ${nextPending.session_date}.`
+    : "Todas as sessões do plano atual foram concluídas!";
+
+  return (
+    `Nível ${stats.level}, ${stats.totalXp} XP no total (${stats.xpIntoLevel}/${stats.xpForNextLevel} ` +
+    `para o próximo nível). Sequência atual: ${stats.streak} dia(s). ${stats.completedCount} ` +
+    `sessões concluídas, ${stats.pendingCount} pendentes. ${nextNote}`
+  );
 }
 
 /** Streams one completion turn, invoking onToken for each text chunk and returning any tool calls. */

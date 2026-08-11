@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/lib/supabase";
-import { AppHeader } from "@/components/app-header";
+import { AppSidebar } from "@/components/app-sidebar";
 
-/** Gates /app, /despesas, /projetos behind auth — replaces proxy.ts's cookie-based redirect. */
+/** Gates /app, /despesas, /projetos, /saude behind auth — replaces proxy.ts's cookie-based redirect. */
 export function ProtectedLayout() {
   const { user, isLoading } = useAuth();
   const [googleCalendarConnected, setGoogleCalendarConnected] = useState(false);
@@ -23,9 +23,9 @@ export function ProtectedLayout() {
   if (!user) return <Navigate to="/login" replace />;
 
   return (
-    <div className="hud-grid-bg flex flex-1 flex-col items-center gap-8 px-6 py-10 font-inter">
-      <AppHeader userEmail={user.email} googleCalendarConnected={googleCalendarConnected} />
-      <div className="flex w-full flex-1 flex-col items-center">
+    <div className="flex min-h-screen flex-1 flex-col font-inter md:flex-row">
+      <AppSidebar userEmail={user.email} googleCalendarConnected={googleCalendarConnected} />
+      <div className="hud-grid-bg flex flex-1 flex-col items-center gap-8 px-6 py-10">
         <Outlet />
       </div>
     </div>

@@ -76,7 +76,7 @@ export function ConnectGoogleCalendarButton({ connected }: { connected: boolean 
   if (connected) {
     return (
       <div className="flex items-center gap-2">
-        <span className="flex items-center gap-1.5 text-xs text-zinc-500">
+        <span className="flex items-center gap-1.5 text-xs text-zinc-400">
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_2px_rgba(52,211,153,0.6)]" />
           Google Agenda conectado
         </span>
@@ -84,11 +84,11 @@ export function ConnectGoogleCalendarButton({ connected }: { connected: boolean 
           type="button"
           onClick={handleConnect}
           disabled={isLoading}
-          className="text-xs text-zinc-500 underline decoration-dotted hover:text-[#0084FF] disabled:cursor-not-allowed disabled:opacity-50"
+          className="text-xs text-zinc-400 underline decoration-dotted hover:text-[#00d4ff] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isLoading ? "Reconectando…" : "Reconectar"}
         </button>
-        {error && <span className="text-xs text-red-600">{error}</span>}
+        {error && <span className="text-xs text-red-400">{error}</span>}
       </div>
     );
   }
@@ -103,7 +103,7 @@ export function ConnectGoogleCalendarButton({ connected }: { connected: boolean 
       >
         {isLoading ? "Conectando…" : "Conectar Google Agenda"}
       </button>
-      {error && <span className="text-xs text-red-600">{error}</span>}
+      {error && <span className="text-xs text-red-400">{error}</span>}
     </div>
   );
 }

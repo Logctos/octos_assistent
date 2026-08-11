@@ -16,6 +16,16 @@ export interface Expense {
   created_at: string;
 }
 
+export interface HealthLog {
+  id: string;
+  user_id: string;
+  log_date: string;
+  weight_kg: number | null;
+  activity_minutes: number | null;
+  sleep_hours: number | null;
+  created_at: string;
+}
+
 export interface Project {
   id: string;
   user_id: string;
@@ -23,5 +33,19 @@ export interface Project {
   description: string | null;
   status: "active" | "paused" | "done";
   category: "trabalho" | "estudos" | "ambas";
+  created_at: string;
+}
+
+export interface StudySession {
+  id: string;
+  user_id: string;
+  plan_label: string;
+  topic: string;
+  session_date: string;
+  duration_minutes: number;
+  xp_value: number;
+  completed: boolean;
+  completed_at: string | null;
+  calendar_event_link: string | null;
   created_at: string;
 }

@@ -34,7 +34,7 @@ export function ProjectForm({ onCreated }: { onCreated?: () => void }) {
       className="hud-panel flex flex-col gap-3 rounded-sm p-4 sm:flex-row sm:items-end"
     >
       <div className="flex w-full flex-col gap-1 sm:w-48">
-        <label htmlFor="name" className="text-xs text-zinc-500">
+        <label htmlFor="name" className="text-xs text-zinc-400">
           Nome
         </label>
         <input
@@ -42,24 +42,24 @@ export function ProjectForm({ onCreated }: { onCreated?: () => void }) {
           name="name"
           required
           disabled={isPending}
-          className="hud-input rounded-sm px-3 py-2 text-sm text-zinc-900 disabled:cursor-not-allowed"
+          className="hud-input rounded-sm px-3 py-2 text-base text-zinc-100 disabled:cursor-not-allowed sm:text-sm"
         />
       </div>
 
       <div className="flex flex-1 flex-col gap-1">
-        <label htmlFor="description" className="text-xs text-zinc-500">
+        <label htmlFor="description" className="text-xs text-zinc-400">
           Descrição (opcional)
         </label>
         <input
           id="description"
           name="description"
           disabled={isPending}
-          className="hud-input rounded-sm px-3 py-2 text-sm text-zinc-900 disabled:cursor-not-allowed"
+          className="hud-input rounded-sm px-3 py-2 text-base text-zinc-100 disabled:cursor-not-allowed sm:text-sm"
         />
       </div>
 
       <div className="flex w-full flex-col gap-1 sm:w-32">
-        <label htmlFor="category" className="text-xs text-zinc-500">
+        <label htmlFor="category" className="text-xs text-zinc-400">
           Categoria
         </label>
         <select
@@ -67,7 +67,7 @@ export function ProjectForm({ onCreated }: { onCreated?: () => void }) {
           name="category"
           disabled={isPending}
           defaultValue="trabalho"
-          className="hud-input rounded-sm px-3 py-2 text-sm text-zinc-900 disabled:cursor-not-allowed"
+          className="hud-input rounded-sm px-3 py-2 text-base text-zinc-100 disabled:cursor-not-allowed sm:text-sm"
         >
           <option value="trabalho">Trabalho</option>
           <option value="estudos">Estudos</option>
@@ -79,7 +79,7 @@ export function ProjectForm({ onCreated }: { onCreated?: () => void }) {
         {isPending ? "Adicionando…" : "Adicionar"}
       </button>
 
-      {error && <p className="text-sm text-red-600 sm:basis-full">{error}</p>}
+      {error && <p className="text-sm text-red-400 sm:basis-full">{error}</p>}
     </form>
   );
 }

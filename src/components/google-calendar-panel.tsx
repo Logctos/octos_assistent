@@ -73,15 +73,15 @@ export function GoogleCalendarPanel({
             <button
               type="button"
               onClick={() => setView("daily")}
-              className={view === "daily" ? "text-[#0084FF]" : "text-zinc-500 hover:text-zinc-900"}
+              className={view === "daily" ? "text-[#00d4ff]" : "text-zinc-400 hover:text-zinc-50"}
             >
               Diário
             </button>
-            <span className="text-zinc-300">/</span>
+            <span className="text-zinc-600">/</span>
             <button
               type="button"
               onClick={() => setView("weekly")}
-              className={view === "weekly" ? "text-[#0084FF]" : "text-zinc-500 hover:text-zinc-900"}
+              className={view === "weekly" ? "text-[#00d4ff]" : "text-zinc-400 hover:text-zinc-50"}
             >
               Semanal
             </button>
@@ -90,19 +90,19 @@ export function GoogleCalendarPanel({
       </div>
 
       {!connected && (
-        <p className="py-2 text-sm text-zinc-500">
+        <p className="py-2 text-sm text-zinc-400">
           Agenda não conectada. Use o botão &quot;Conectar Google Agenda&quot; no topo da tela.
         </p>
       )}
 
-      {connected && error && <p className="py-2 text-sm text-red-600">{error}</p>}
+      {connected && error && <p className="py-2 text-sm text-red-400">{error}</p>}
 
       {connected && !error && view === "daily" && (
         <>
           {dailyEvents.length === 0 ? (
-            <p className="py-2 text-sm text-zinc-500">Nenhum evento hoje.</p>
+            <p className="py-2 text-sm text-zinc-400">Nenhum evento hoje.</p>
           ) : (
-            <ul className="flex flex-col divide-y divide-black/5">
+            <ul className="flex flex-col divide-y divide-white/10">
               {dailyEvents.map((event) => (
                 <EventRow key={event.id} event={event} />
               ))}
@@ -114,15 +114,15 @@ export function GoogleCalendarPanel({
       {connected && !error && view === "weekly" && (
         <>
           {groupedByDay.length === 0 ? (
-            <p className="py-2 text-sm text-zinc-500">Nenhum evento nos próximos 7 dias.</p>
+            <p className="py-2 text-sm text-zinc-400">Nenhum evento nos próximos 7 dias.</p>
           ) : (
             <div className="flex flex-col gap-3">
               {groupedByDay.map(([dateKey, dayEvents]) => (
                 <div key={dateKey}>
-                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">
                     {formatDayHeading(dateKey)}
                   </p>
-                  <ul className="flex flex-col divide-y divide-black/5">
+                  <ul className="flex flex-col divide-y divide-white/10">
                     {dayEvents.map((event) => (
                       <EventRow key={event.id} event={event} />
                     ))}
@@ -144,11 +144,11 @@ function EventRow({ event }: { event: GoogleCalendarEvent }) {
         href={event.htmlLink}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-zinc-800 hover:text-[#0084FF]"
+        className="text-zinc-200 hover:text-[#00d4ff]"
       >
         {event.summary || "(sem título)"}
       </a>
-      <span className="shrink-0 font-mono text-xs text-zinc-500">{formatEventTime(event)}</span>
+      <span className="shrink-0 font-mono text-xs text-zinc-400">{formatEventTime(event)}</span>
     </li>
   );
 }

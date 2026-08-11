@@ -30,7 +30,7 @@ export function ProjectStatusSelect({
           onChanged?.();
         });
       }}
-      className="hud-input rounded-sm px-2 py-1 text-xs text-zinc-900 disabled:cursor-not-allowed"
+      className="hud-input rounded-sm px-2 py-1 text-xs text-zinc-100 disabled:cursor-not-allowed"
     >
       {Object.entries(STATUS_LABELS).map(([value, label]) => (
         <option key={value} value={value}>

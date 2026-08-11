@@ -8,6 +8,7 @@ import { AuthCallback } from "@/routes/auth-callback";
 import { ChatRoute } from "@/routes/chat";
 import { DespesasPage } from "@/routes/despesas";
 import { ProjetosPage } from "@/routes/projetos";
+import { SaudePage } from "@/routes/saude";
 
 export function App() {
   return (
@@ -36,6 +37,7 @@ export function App() {
             <Route path="/app" element={<ChatRoute />} />
             <Route path="/despesas" element={<DespesasPage />} />
             <Route path="/projetos" element={<ProjetosPage />} />
+            <Route path="/saude" element={<SaudePage />} />
           </Route>
         </Routes>
       </AuthProvider>

@@ -29,8 +29,8 @@ export function LoginPage() {
   return (
     <div className="hud-grid-bg flex flex-1 flex-col items-center justify-center gap-8 px-6 py-24 font-inter">
       <div className="flex flex-col items-center gap-3 text-center">
-        <span className="font-fustat flex items-center gap-2 text-3xl font-extrabold tracking-tight text-black">
-          <Bot className="h-8 w-8 text-[#0084FF]" />
+        <span className="font-fustat flex items-center gap-2 text-3xl font-extrabold tracking-tight text-zinc-50">
+          <Bot className="h-8 w-8 text-[#00d4ff]" />
           Octos.
         </span>
       </div>
@@ -40,7 +40,7 @@ export function LoginPage() {
         className="hud-panel flex w-full max-w-sm flex-col gap-3 rounded-sm p-6"
       >
         <div className="flex flex-col gap-1">
-          <label htmlFor="email" className="text-xs text-zinc-500">
+          <label htmlFor="email" className="text-xs text-zinc-400">
             Email
           </label>
           <input
@@ -51,12 +51,12 @@ export function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             disabled={isLoading}
-            className="hud-input rounded-sm px-3 py-2 text-sm text-zinc-900 disabled:cursor-not-allowed"
+            className="hud-input rounded-sm px-3 py-2 text-base text-zinc-100 disabled:cursor-not-allowed sm:text-sm"
           />
         </div>
 
         <div className="flex flex-col gap-1">
-          <label htmlFor="password" className="text-xs text-zinc-500">
+          <label htmlFor="password" className="text-xs text-zinc-400">
             Senha
           </label>
           <input
@@ -67,11 +67,11 @@ export function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             disabled={isLoading}
-            className="hud-input rounded-sm px-3 py-2 text-sm text-zinc-900 disabled:cursor-not-allowed"
+            className="hud-input rounded-sm px-3 py-2 text-base text-zinc-100 disabled:cursor-not-allowed sm:text-sm"
           />
         </div>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-red-400">{error}</p>}
 
         <button
           type="submit"

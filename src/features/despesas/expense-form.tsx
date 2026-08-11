@@ -70,7 +70,7 @@ export function ExpenseForm({ onCreated }: { onCreated?: () => void }) {
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <div className="flex w-full flex-col gap-1 sm:w-44">
-          <label htmlFor="category" className="text-xs text-zinc-500">
+          <label htmlFor="category" className="text-xs text-zinc-400">
             Grupo
           </label>
           <select
@@ -80,7 +80,7 @@ export function ExpenseForm({ onCreated }: { onCreated?: () => void }) {
             disabled={isPending}
             value={group}
             onChange={(e) => setGroup(e.target.value)}
-            className="hud-input rounded-sm px-3 py-2 text-sm text-zinc-900 disabled:cursor-not-allowed"
+            className="hud-input rounded-sm px-3 py-2 text-base text-zinc-100 disabled:cursor-not-allowed sm:text-sm"
           >
             {groups.map((g) => (
               <option key={g} value={g}>
@@ -91,7 +91,7 @@ export function ExpenseForm({ onCreated }: { onCreated?: () => void }) {
         </div>
 
         <div className="flex w-full flex-col gap-1 sm:w-44">
-          <label htmlFor="subcategory" className="text-xs text-zinc-500">
+          <label htmlFor="subcategory" className="text-xs text-zinc-400">
             Subcategoria
           </label>
           <select
@@ -99,7 +99,7 @@ export function ExpenseForm({ onCreated }: { onCreated?: () => void }) {
             name="subcategory"
             required
             disabled={isPending}
-            className="hud-input rounded-sm px-3 py-2 text-sm text-zinc-900 disabled:cursor-not-allowed"
+            className="hud-input rounded-sm px-3 py-2 text-base text-zinc-100 disabled:cursor-not-allowed sm:text-sm"
           >
             {subcategories.map((s) => (
               <option key={s} value={s}>
@@ -110,7 +110,7 @@ export function ExpenseForm({ onCreated }: { onCreated?: () => void }) {
         </div>
 
         <div className="flex w-full flex-col gap-1 sm:w-32">
-          <label htmlFor="amount" className="text-xs text-zinc-500">
+          <label htmlFor="amount" className="text-xs text-zinc-400">
             Valor (R$)
           </label>
           <input
@@ -121,7 +121,7 @@ export function ExpenseForm({ onCreated }: { onCreated?: () => void }) {
             min="0.01"
             required
             disabled={isPending}
-            className="hud-input rounded-sm px-3 py-2 text-sm text-zinc-900 disabled:cursor-not-allowed"
+            className="hud-input rounded-sm px-3 py-2 text-base text-zinc-100 disabled:cursor-not-allowed sm:text-sm"
           />
         </div>
 
@@ -131,7 +131,7 @@ export function ExpenseForm({ onCreated }: { onCreated?: () => void }) {
       </div>
 
       <div className="flex flex-col gap-1">
-        <label htmlFor="description" className="text-xs text-zinc-500">
+        <label htmlFor="description" className="text-xs text-zinc-400">
           Observação (opcional)
         </label>
         <input
@@ -139,11 +139,11 @@ export function ExpenseForm({ onCreated }: { onCreated?: () => void }) {
           name="description"
           disabled={isPending}
           placeholder="Ex: fatura de julho"
-          className="hud-input rounded-sm px-3 py-2 text-sm text-zinc-900 disabled:cursor-not-allowed"
+          className="hud-input rounded-sm px-3 py-2 text-base text-zinc-100 disabled:cursor-not-allowed sm:text-sm"
         />
       </div>
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <p className="text-sm text-red-400">{error}</p>}
     </form>
   );
 }

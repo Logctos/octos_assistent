@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ChatMessage } from "@/types";
 import { useSpeechRecognition } from "@/lib/hooks/use-speech-recognition";
 import { useSpeechSynthesis } from "@/lib/hooks/use-speech-synthesis";
-import { OctosAvatar } from "@/components/octos-avatar";
+import { JarvisOrbAvatar } from "@/components/jarvis-orb-avatar";
 import { JarvisFrame } from "@/components/jarvis-frame";
 import { DateTile, WeatherTile, NewsTile, ActivitiesTile, AgentsTile } from "@/components/hud-tiles";
 import type { NewsItem } from "@/lib/tech-news";
@@ -183,7 +183,7 @@ export function ChatPanel({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <span className="hud-eyebrow">Console</span>
-            <span className="text-xs text-zinc-500">
+            <span className="text-xs text-zinc-400">
               {apiKey ? "Chave da OpenAI configurada" : "Chave da OpenAI não configurada"} ·{" "}
               {messages.length} mensagens
             </span>
@@ -207,7 +207,7 @@ export function ChatPanel({
                 title="Modo mãos-livres: volta a ouvir sozinho depois de cada resposta"
                 className={
                   handsFreeEnabled
-                    ? "rounded-sm border border-[#0084FF]/40 bg-[#0084FF]/10 px-2 py-1 text-xs text-[#0066cc]"
+                    ? "rounded-sm border border-[#00d4ff]/40 bg-[#00d4ff]/10 px-2 py-1 text-xs text-[#7fe9ff]"
                     : "hud-button rounded-sm px-2 py-1 text-xs"
                 }
               >
@@ -227,7 +227,7 @@ export function ChatPanel({
 
         {showSettings && (
           <div className="hud-panel flex flex-col gap-2 rounded-sm p-3">
-            <label htmlFor="openai-api-key" className="text-xs text-zinc-500">
+            <label htmlFor="openai-api-key" className="text-xs text-zinc-400">
               Chave da API da OpenAI (salva apenas neste navegador)
             </label>
             <input
@@ -237,7 +237,7 @@ export function ChatPanel({
               value={apiKey}
               onChange={(e) => handleApiKeyChange(e.target.value)}
               placeholder="sk-..."
-              className="hud-input rounded-sm px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400"
+              className="hud-input rounded-sm px-3 py-2 text-base text-zinc-100 placeholder:text-zinc-500 sm:text-sm"
             />
           </div>
         )}
@@ -253,7 +253,7 @@ export function ChatPanel({
         <div className="flex flex-col items-center justify-center gap-3 py-6">
           <span className="arc-reactor" />
           <JarvisFrame>
-            <OctosAvatar />
+            <JarvisOrbAvatar status={avatarStatus} />
           </JarvisFrame>
           <span className="hud-eyebrow">{statusLabel}</span>
         </div>
@@ -267,7 +267,7 @@ export function ChatPanel({
       <div className="hud-panel hud-scanline flex w-full flex-col gap-3 rounded-sm p-4">
         <div className="hud-panel flex h-72 flex-col gap-3 overflow-y-auto rounded-sm p-4">
           {messages.length === 0 && (
-            <p className="m-auto text-center text-sm text-zinc-500">
+            <p className="m-auto text-center text-sm text-zinc-400">
               Envie uma mensagem para começar.
             </p>
           )}
@@ -276,8 +276,8 @@ export function ChatPanel({
               key={message.id}
               className={`max-w-[80%] rounded-sm px-3 py-2 text-sm ${
                 message.role === "user"
-                  ? "ml-auto border border-[#0084FF]/20 bg-[#0084FF]/8 text-[#0066cc]"
-                  : "mr-auto border border-black/5 bg-zinc-50 text-zinc-800"
+                  ? "ml-auto border border-[#00d4ff]/25 bg-[#00d4ff]/10 text-[#8be9ff]"
+                  : "mr-auto border border-white/10 bg-white/5 text-zinc-200"
               }`}
             >
               {message.content || (message.role === "assistant" && isLoading ? "…" : "")}
@@ -286,7 +286,7 @@ export function ChatPanel({
           <div ref={bottomRef} />
         </div>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-red-400">{error}</p>}
 
         <form onSubmit={handleSubmit} className="flex items-center gap-2">
           {isSpeechInputSupported && (
@@ -296,7 +296,7 @@ export function ChatPanel({
               aria-label={isListening ? "Parar de ouvir" : "Falar"}
               className={
                 isListening
-                  ? "animate-pulse rounded-sm border border-[#0084FF]/40 bg-[#0084FF]/10 px-3 py-2 text-sm text-[#0066cc]"
+                  ? "animate-pulse rounded-sm border border-[#00d4ff]/40 bg-[#00d4ff]/10 px-3 py-2 text-sm text-[#7fe9ff]"
                   : "hud-button rounded-sm px-3 py-2 text-sm"
               }
             >
@@ -308,7 +308,7 @@ export function ChatPanel({
             onChange={(e) => setInput(e.target.value)}
             disabled={isLoading}
             placeholder={isListening ? "Ouvindo…" : "Fale com o Octos…"}
-            className="hud-input flex-1 rounded-sm px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 disabled:cursor-not-allowed"
+            className="hud-input min-w-0 flex-1 rounded-sm px-3 py-2 text-base text-zinc-100 placeholder:text-zinc-500 disabled:cursor-not-allowed sm:text-sm"
           />
           <button
             type="submit"
