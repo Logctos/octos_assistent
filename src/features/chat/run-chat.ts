@@ -24,6 +24,7 @@ import {
   saveStudyMaterial,
   type NewStudySession,
 } from "@/features/estudos/api";
+import { listDailySummaries, saveDailySummary } from "@/features/diario/api";
 import type { Project, StudySource } from "@/types";
 
 const TIME_ZONE = "America/Sao_Paulo";
@@ -273,6 +274,37 @@ const TOOLS: ChatCompletionTool[] = [
   {
     type: "function",
     function: {
+      name: "save_daily_summary",
+      description:
+        "Guarda um resumo do que o usuário estudou e/ou trabalhou num dia, no diário dele. Use " +
+        "sempre que ele contar, falando ou escrevendo, o que estudou, revisou ou fez no trabalho — " +
+        "resuma o que ele disse em texto corrido, não copie literalmente a fala.",
+      parameters: {
+        type: "object",
+        properties: {
+          summary: { type: "string", description: "Resumo do que foi estudado e/ou trabalhado" },
+          date: {
+            type: "string",
+            description: "Data do resumo (AAAA-MM-DD). Se omitido, usa hoje.",
+          },
+        },
+        required: ["summary"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_daily_summaries",
+      description:
+        "Lista as entradas recentes do diário do usuário (estudos e trabalho). Use quando ele " +
+        "perguntar o que estudou ou fez num período, ou pedir um resumo do que já registrou.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "list_calendar_events",
       description:
         "Lista os próximos eventos do Google Agenda do usuário. Use quando ele perguntar o que " +
@@ -359,6 +391,9 @@ function buildSystemPrompt() {
     "terminou de estudar um tema, use complete_study_session (pelo nome do tema) para dar o XP e " +
     "contar nível/sequência atualizados de forma comemorativa, tipo jogo. Use get_study_progress " +
     "quando ele perguntar seu nível, XP, sequência (streak) ou progresso nos estudos. " +
+    "Sempre que o usuário contar o que estudou ou trabalhou naquele dia — falando ou escrevendo, " +
+    "mesmo sem pedir explicitamente para guardar — use save_daily_summary para registrar no " +
+    "diário dele. Se ele perguntar o que já estudou/fez, use list_daily_summaries. " +
     "Para todas as ferramentas de listagem, narre o " +
     "resultado em texto corrido e curto, não como uma lista técnica — e se a lista vier vazia, diga " +
     "isso de forma natural."
@@ -419,6 +454,14 @@ async function runTool(
 
   if (toolCall.function.name === "get_study_progress") {
     return runGetStudyProgress();
+  }
+
+  if (toolCall.function.name === "save_daily_summary") {
+    return runSaveDailySummary(toolCall);
+  }
+
+  if (toolCall.function.name === "list_daily_summaries") {
+    return runListDailySummaries();
   }
 
   return `Erro: ferramenta desconhecida "${toolCall.function.name}"`;
@@ -945,6 +988,29 @@ async function runGetStudyProgress(): Promise<string> {
     `para o próximo nível). Sequência atual: ${stats.streak} dia(s). ${stats.completedCount} ` +
     `sessões concluídas, ${stats.pendingCount} pendentes. ${nextNote}`
   );
+}
+
+async function runSaveDailySummary(
+  toolCall: ChatCompletionMessageFunctionToolCall
+): Promise<string> {
+  try {
+    const args = JSON.parse(toolCall.function.arguments) as { summary: string; date?: string };
+    const { error } = await saveDailySummary({ content: args.summary, logDate: args.date });
+    if (error) return `Erro ao guardar o resumo: ${error}`;
+    return "Resumo guardado no diário.";
+  } catch (error) {
+    return `Erro ao guardar o resumo: ${error instanceof Error ? error.message : "falha desconhecida"}`;
+  }
+}
+
+async function runListDailySummaries(): Promise<string> {
+  const summaries = await listDailySummaries();
+  if (summaries.length === 0) return "Nenhum resumo guardado no diário ainda.";
+
+  return summaries
+    .slice(0, 14)
+    .map((s) => `${s.log_date}: ${s.content}`)
+    .join(" | ");
 }
 
 /** Streams one completion turn, invoking onToken for each text chunk and returning any tool calls. */

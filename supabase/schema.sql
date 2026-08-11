@@ -97,6 +97,17 @@ create table if not exists study_materials (
   created_at timestamptz not null default now()
 );
 
+-- The user's running daily journal: one entry per day they report studying or working on
+-- something (via chat, voice or text), building up a "document" of everything over time.
+-- The chat home page reads yesterday's entries for the "resumo de ontem" recap.
+create table if not exists daily_summaries (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  log_date date not null default current_date,
+  content text not null,
+  created_at timestamptz not null default now()
+);
+
 alter table expenses enable row level security;
 alter table projects enable row level security;
 alter table health_logs enable row level security;
@@ -104,6 +115,7 @@ alter table google_calendar_connections enable row level security;
 alter table chat_messages enable row level security;
 alter table study_sessions enable row level security;
 alter table study_materials enable row level security;
+alter table daily_summaries enable row level security;
 
 create policy "Users can select their own expenses"
   on expenses for select
@@ -222,4 +234,21 @@ create policy "Users can update their own study materials"
 
 create policy "Users can delete their own study materials"
   on study_materials for delete
+  using (auth.uid() = user_id);
+
+create policy "Users can select their own daily summaries"
+  on daily_summaries for select
+  using (auth.uid() = user_id);
+
+create policy "Users can insert their own daily summaries"
+  on daily_summaries for insert
+  with check (auth.uid() = user_id);
+
+create policy "Users can update their own daily summaries"
+  on daily_summaries for update
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create policy "Users can delete their own daily summaries"
+  on daily_summaries for delete
   using (auth.uid() = user_id);

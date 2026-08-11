@@ -55,6 +55,14 @@ export interface StudySource {
   url: string;
 }
 
+export interface DailySummary {
+  id: string;
+  user_id: string;
+  log_date: string;
+  content: string;
+  created_at: string;
+}
+
 export interface StudyMaterial {
   id: string;
   user_id: string;

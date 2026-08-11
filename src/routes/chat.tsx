@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ChatPanel } from "@/components/chat-panel";
+import { YesterdaySummaryCard } from "@/features/diario/yesterday-summary-card";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/lib/supabase";
 import { getGoogleCalendarConnection, listUpcomingGoogleCalendarEvents } from "@/lib/google-calendar";
@@ -83,5 +84,10 @@ export function ChatRoute() {
     { label: "Conta (Supabase)", connected: Boolean(user) },
   ];
 
-  return <ChatPanel dateLabel={dateLabel} activities={activities} agents={agents} news={news} />;
+  return (
+    <div className="flex w-full flex-1 flex-col gap-4">
+      <YesterdaySummaryCard />
+      <ChatPanel dateLabel={dateLabel} activities={activities} agents={agents} news={news} />
+    </div>
+  );
 }

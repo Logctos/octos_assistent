@@ -1,4 +1,5 @@
 import { StudyPlanPanel } from "@/features/estudos/study-plan-panel";
+import { DiaryPanel } from "@/features/diario/diary-panel";
 
 export function EstudosPage() {
   return (
@@ -13,6 +14,7 @@ export function EstudosPage() {
       </div>
 
       <StudyPlanPanel />
+      <DiaryPanel />
     </div>
   );
 }
