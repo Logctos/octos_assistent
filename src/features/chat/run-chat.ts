@@ -197,9 +197,21 @@ const TOOLS: ChatCompletionTool[] = [
             items: { type: "string" },
             description: "Temas a estudar, ex: [\"React\", \"Inglês\"]. As sessões alternam entre eles.",
           },
-          sessions_per_week: {
-            type: "number",
-            description: "Quantas sessões por semana. Padrão: 3.",
+          days_of_week: {
+            type: "array",
+            items: {
+              type: "string",
+              enum: ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"],
+            },
+            description:
+              "Dias da semana em que o usuário quer estudar, ex: [\"segunda\", \"quarta\", " +
+              "\"sexta\"]. SEMPRE pergunte isso ao usuário — nunca escolha por conta própria.",
+          },
+          time: {
+            type: "string",
+            description:
+              "Horário das sessões, formato HH:MM (24h), ex: \"19:00\". SEMPRE pergunte isso ao " +
+              "usuário — nunca escolha por conta própria.",
           },
           session_minutes: {
             type: "number",
@@ -216,7 +228,7 @@ const TOOLS: ChatCompletionTool[] = [
               "livro, autor, ou uma URL). Opcional — só preencha se o usuário mencionar algo.",
           },
         },
-        required: ["topics"],
+        required: ["topics", "days_of_week", "time"],
       },
     },
   },
@@ -378,9 +390,11 @@ function buildSystemPrompt() {
     "Você também monta planos de estudo gamificados: quando o usuário der os temas que quer " +
     "estudar (ou pedir um plano/cronograma de estudos), use create_study_plan — ela já agenda as " +
     "sessões no Google Agenda, cria o XP de cada uma, E pesquisa na internet o material real de " +
-    "cada tema (princípios, conceitos-chave, fontes). Se ele não informar frequência, duração ou " +
-    "quantidade de semanas, use os padrões (3x por semana, 45 min por sessão, 4 semanas) sem " +
-    "perguntar, e avise os padrões usados na resposta. Se o usuário indicar um livro, artigo ou " +
+    "cada tema (princípios, conceitos-chave, fontes). Antes de chamar create_study_plan, SEMPRE " +
+    "pergunte em quais dias da semana e em que horário o usuário quer estudar — nunca escolha " +
+    "isso por conta própria nem assuma um padrão, mesmo que ele não tenha mencionado. Duração de " +
+    "cada sessão e quantidade de semanas podem usar os padrões (45 min, 4 semanas) sem perguntar, " +
+    "se ele não informar — mas dias da semana e horário não. Se o usuário indicar um livro, artigo ou " +
     "site como base para os temas, passe isso em base_material — a pesquisa vai priorizar essa " +
     "fonte além de buscar outras. Cada sessão vale 20 XP e sobe de nível a cada 100 XP. O " +
     "resultado de create_study_plan já traz o material pesquisado de cada tema — repasse esse " +
@@ -789,6 +803,34 @@ function buildSessionDescription(
 /** Curriculum progression each topic's sessions cycle through, e.g. Docker → Introdução ao Docker, Fundamentos de Docker, Projetos com Docker, then repeats as "revisão". */
 const STUDY_PLAN_STAGES = ["Introdução ao", "Fundamentos de", "Projetos com"];
 
+const WEEKDAY_INDEX: Record<string, number> = {
+  domingo: 0,
+  segunda: 1,
+  terça: 2,
+  terca: 2,
+  quarta: 3,
+  quinta: 4,
+  sexta: 5,
+  sábado: 6,
+  sabado: 6,
+};
+
+function parseWeekdayIndices(days: string[]): number[] {
+  const indices = days
+    .map((d) => WEEKDAY_INDEX[d.trim().toLowerCase()])
+    .filter((i): i is number => i !== undefined);
+  return [...new Set(indices)];
+}
+
+function parseTimeOfDay(time: string): { hour: number; minute: number } | null {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(time.trim());
+  if (!match) return null;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+  return { hour, minute };
+}
+
 function buildStageLabel(topic: string, occurrenceIndex: number): string {
   const stage = STUDY_PLAN_STAGES[occurrenceIndex % STUDY_PLAN_STAGES.length];
   const cycle = Math.floor(occurrenceIndex / STUDY_PLAN_STAGES.length);
@@ -803,7 +845,8 @@ async function runCreateStudyPlan(
   try {
     const args = JSON.parse(toolCall.function.arguments) as {
       topics: string[];
-      sessions_per_week?: number;
+      days_of_week: string[];
+      time: string;
       session_minutes?: number;
       weeks?: number;
       base_material?: string;
@@ -812,11 +855,19 @@ async function runCreateStudyPlan(
     const topics = (args.topics ?? []).map((t) => t.trim()).filter(Boolean);
     if (topics.length === 0) return "Erro: informe ao menos um tema para o plano de estudos.";
 
-    const sessionsPerWeek = clamp(Math.round(args.sessions_per_week ?? 3), 1, 7);
+    const targetWeekdays = parseWeekdayIndices(args.days_of_week ?? []);
+    if (targetWeekdays.length === 0) {
+      return "Erro: pergunte ao usuário em quais dias da semana ele quer estudar antes de tentar de novo.";
+    }
+
+    const parsedTime = parseTimeOfDay(args.time ?? "");
+    if (!parsedTime) {
+      return "Erro: pergunte ao usuário o horário das sessões (formato HH:MM) antes de tentar de novo.";
+    }
+
     const sessionMinutes = clamp(Math.round(args.session_minutes ?? 45), 15, 240);
     const weeks = clamp(Math.round(args.weeks ?? 4), 1, 12);
-    const totalSessions = Math.min(sessionsPerWeek * weeks, 60);
-    const intervalDays = Math.max(1, Math.round(7 / sessionsPerWeek));
+    const maxSessions = Math.min(targetWeekdays.length * weeks, 60);
 
     const {
       data: { user },
@@ -828,7 +879,22 @@ async function runCreateStudyPlan(
     const todaySP = toSaoPauloWallClock(new Date());
     const baseYear = todaySP.getUTCFullYear();
     const baseMonth = todaySP.getUTCMonth() + 1;
-    const baseDay = todaySP.getUTCDate() + 1; // start tomorrow
+    const startDay = todaySP.getUTCDate() + 1; // start tomorrow
+
+    // Scan forward day by day from tomorrow, keeping only the dates that fall on one of the
+    // requested weekdays, until we've collected enough sessions (or run out of the plan's window).
+    const sessionDates: { year: number; month: number; day: number }[] = [];
+    for (let offset = 0; sessionDates.length < maxSessions && offset < weeks * 7 + 7; offset++) {
+      const probe = new Date(Date.UTC(baseYear, baseMonth - 1, startDay + offset));
+      if (targetWeekdays.includes(probe.getUTCDay())) {
+        sessionDates.push({
+          year: probe.getUTCFullYear(),
+          month: probe.getUTCMonth() + 1,
+          day: probe.getUTCDate(),
+        });
+      }
+    }
+    const totalSessions = sessionDates.length;
 
     const planLabel = `Estudos: ${topics.join(", ")}`;
 
@@ -858,7 +924,8 @@ async function runCreateStudyPlan(
       const rawTopic = topics[i % topics.length];
       const occurrenceIndex = Math.floor(i / topics.length);
       const stageTopic = buildStageLabel(rawTopic, occurrenceIndex);
-      const start = localSaoPauloDate(baseYear, baseMonth, baseDay + i * intervalDays, 19, 0);
+      const { year, month, day } = sessionDates[i];
+      const start = localSaoPauloDate(year, month, day, parsedTime.hour, parsedTime.minute);
       const end = new Date(start.getTime() + sessionMinutes * 60_000);
 
       let calendarLink: string | null = null;
@@ -898,9 +965,9 @@ async function runCreateStudyPlan(
     const materialSections = uniqueTopics.map((topic, i) => formatMaterialSection(topic, materials[i])).join("");
 
     return (
-      `Plano de estudos criado: ${totalSessions} sessões de ${sessionMinutes} min, ` +
-      `${sessionsPerWeek}x por semana por ${weeks} semana(s), alternando entre ${topics.join(", ")}, ` +
-      `começando amanhã. Cada sessão vale 20 XP. ${calendarNote}` +
+      `Plano de estudos criado: ${totalSessions} sessões de ${sessionMinutes} min, nos dias ` +
+      `${args.days_of_week.join(", ")} às ${args.time}, por ${weeks} semana(s), alternando entre ` +
+      `${topics.join(", ")}. Cada sessão vale 20 XP. ${calendarNote}` +
       materialSections
     );
   } catch (error) {
