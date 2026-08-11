@@ -49,3 +49,19 @@ export interface StudySession {
   calendar_event_link: string | null;
   created_at: string;
 }
+
+export interface StudySource {
+  title: string;
+  url: string;
+}
+
+export interface StudyMaterial {
+  id: string;
+  user_id: string;
+  plan_label: string | null;
+  topic: string;
+  content: string;
+  sources: StudySource[];
+  base_material: string | null;
+  created_at: string;
+}

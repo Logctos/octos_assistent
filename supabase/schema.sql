@@ -84,12 +84,26 @@ create table if not exists study_sessions (
   created_at timestamptz not null default now()
 );
 
+-- Researched study material per topic (principles, key concepts, web sources), generated
+-- via a web-search-grounded model call and optionally seeded by a user-given base book/site.
+create table if not exists study_materials (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  plan_label text,
+  topic text not null,
+  content text not null,
+  sources jsonb not null default '[]'::jsonb,
+  base_material text,
+  created_at timestamptz not null default now()
+);
+
 alter table expenses enable row level security;
 alter table projects enable row level security;
 alter table health_logs enable row level security;
 alter table google_calendar_connections enable row level security;
 alter table chat_messages enable row level security;
 alter table study_sessions enable row level security;
+alter table study_materials enable row level security;
 
 create policy "Users can select their own expenses"
   on expenses for select
@@ -191,4 +205,21 @@ create policy "Users can update their own study sessions"
 
 create policy "Users can delete their own study sessions"
   on study_sessions for delete
+  using (auth.uid() = user_id);
+
+create policy "Users can select their own study materials"
+  on study_materials for select
+  using (auth.uid() = user_id);
+
+create policy "Users can insert their own study materials"
+  on study_materials for insert
+  with check (auth.uid() = user_id);
+
+create policy "Users can update their own study materials"
+  on study_materials for update
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create policy "Users can delete their own study materials"
+  on study_materials for delete
   using (auth.uid() = user_id);

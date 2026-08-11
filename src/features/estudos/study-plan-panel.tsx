@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import type { StudySession } from "@/types";
-import { computeStudyStats, deleteStudySession, listStudySessions } from "@/features/estudos/api";
+import type { StudyMaterial, StudySession } from "@/types";
+import {
+  computeStudyStats,
+  deleteStudySession,
+  listStudyMaterials,
+  listStudySessions,
+} from "@/features/estudos/api";
 
 function formatSessionDate(dateOnly: string) {
   return new Date(`${dateOnly}T00:00:00`).toLocaleDateString("pt-BR", {
@@ -10,13 +15,28 @@ function formatSessionDate(dateOnly: string) {
   });
 }
 
+/** One card per topic, keeping only the most recent material (listStudyMaterials is already newest-first). */
+function dedupeByTopic(materials: StudyMaterial[]): StudyMaterial[] {
+  const seen = new Set<string>();
+  const result: StudyMaterial[] = [];
+  for (const m of materials) {
+    const key = m.topic.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(m);
+  }
+  return result;
+}
+
 export function StudyPlanPanel() {
   const [sessions, setSessions] = useState<StudySession[]>([]);
+  const [materials, setMaterials] = useState<StudyMaterial[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const refetch = useCallback(() => {
-    listStudySessions().then((data) => {
-      setSessions(data);
+    Promise.all([listStudySessions(), listStudyMaterials()]).then(([sessionData, materialData]) => {
+      setSessions(sessionData);
+      setMaterials(materialData);
       setIsLoading(false);
     });
   }, []);
@@ -55,6 +75,7 @@ export function StudyPlanPanel() {
     .sort((a, b) => (b.completed_at ?? "").localeCompare(a.completed_at ?? ""));
 
   const xpPct = Math.round((stats.xpIntoLevel / stats.xpForNextLevel) * 100);
+  const topicMaterials = dedupeByTopic(materials);
 
   return (
     <div className="flex flex-col gap-4">
@@ -116,6 +137,42 @@ export function StudyPlanPanel() {
           </ul>
         )}
       </div>
+
+      {topicMaterials.length > 0 && (
+        <div className="hud-panel flex flex-col gap-2 rounded-sm p-4">
+          <span className="hud-eyebrow">Material de estudo ({topicMaterials.length})</span>
+          <div className="flex flex-col divide-y divide-white/10">
+            {topicMaterials.map((m) => (
+              <details key={m.id} className="group py-2">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-sm text-zinc-200 marker:content-none">
+                  <span className="flex items-center gap-2">
+                    <span aria-hidden>📚</span>
+                    {m.topic}
+                  </span>
+                  <span className="text-xs text-zinc-500 transition-transform group-open:rotate-180">▾</span>
+                </summary>
+                <p className="mt-2 whitespace-pre-line text-sm text-zinc-300">{m.content}</p>
+                {m.sources.length > 0 && (
+                  <ul className="mt-2 flex flex-col gap-1">
+                    {m.sources.map((s) => (
+                      <li key={s.url}>
+                        <a
+                          href={s.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-[#00d4ff] hover:underline"
+                        >
+                          {s.title || s.url}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </details>
+            ))}
+          </div>
+        </div>
+      )}
 
       {completed.length > 0 && (
         <div className="hud-panel flex flex-col gap-2 rounded-sm p-4">

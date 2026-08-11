@@ -19,10 +19,12 @@ import {
   computeStudyStats,
   createStudySessions,
   findPendingSessionByTopic,
+  findStudyMaterialByTopic,
   listStudySessions,
+  saveStudyMaterial,
   type NewStudySession,
 } from "@/features/estudos/api";
-import type { Project } from "@/types";
+import type { Project, StudySource } from "@/types";
 
 const TIME_ZONE = "America/Sao_Paulo";
 
@@ -183,8 +185,9 @@ const TOOLS: ChatCompletionTool[] = [
       name: "create_study_plan",
       description:
         "Monta um plano de estudos gamificado a partir de temas: agenda as sessões no Google " +
-        "Agenda e cria as sessões com XP no sistema de gamificação. Use quando o usuário pedir um " +
-        "plano/cronograma de estudos ou disser os temas que quer estudar.",
+        "Agenda, cria as sessões com XP no sistema de gamificação, E pesquisa na internet o " +
+        "material de estudo de cada tema (princípios, conceitos-chave e fontes). Use quando o " +
+        "usuário pedir um plano/cronograma de estudos ou disser os temas que quer estudar.",
       parameters: {
         type: "object",
         properties: {
@@ -205,8 +208,35 @@ const TOOLS: ChatCompletionTool[] = [
             type: "number",
             description: "Duração do plano em semanas. Padrão: 4.",
           },
+          base_material: {
+            type: "string",
+            description:
+              "Livro, artigo ou site que o usuário indicou como base para os temas (nome do " +
+              "livro, autor, ou uma URL). Opcional — só preencha se o usuário mencionar algo.",
+          },
         },
         required: ["topics"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_study_material",
+      description:
+        "Busca (ou pesquisa na internet, se ainda não existir) o material de estudo — princípios, " +
+        "conceitos-chave e fontes — de um tema do plano de estudos. Use quando o usuário pedir o " +
+        "material, o conteúdo, os princípios ou recursos sobre um tema específico.",
+      parameters: {
+        type: "object",
+        properties: {
+          topic: { type: "string", description: "Tema a pesquisar/buscar material." },
+          base_material: {
+            type: "string",
+            description: "Livro, artigo ou site indicado como base, se o usuário mencionar um.",
+          },
+        },
+        required: ["topic"],
       },
     },
   },
@@ -315,20 +345,30 @@ function buildSystemPrompt() {
     "o usuário perguntar o que tem na agenda. " +
     "Você também monta planos de estudo gamificados: quando o usuário der os temas que quer " +
     "estudar (ou pedir um plano/cronograma de estudos), use create_study_plan — ela já agenda as " +
-    "sessões no Google Agenda e cria o XP de cada uma. Se ele não informar frequência, duração ou " +
+    "sessões no Google Agenda, cria o XP de cada uma, E pesquisa na internet o material real de " +
+    "cada tema (princípios, conceitos-chave, fontes). Se ele não informar frequência, duração ou " +
     "quantidade de semanas, use os padrões (3x por semana, 45 min por sessão, 4 semanas) sem " +
-    "perguntar, e avise os padrões usados na resposta. Cada sessão vale 20 XP e sobe de nível a " +
-    "cada 100 XP. Quando o usuário disser que terminou de estudar um tema, use " +
-    "complete_study_session (pelo nome do tema) para dar o XP e contar nível/sequência " +
-    "atualizados de forma comemorativa, tipo jogo. Use get_study_progress quando ele perguntar " +
-    "seu nível, XP, sequência (streak) ou progresso nos estudos. " +
+    "perguntar, e avise os padrões usados na resposta. Se o usuário indicar um livro, artigo ou " +
+    "site como base para os temas, passe isso em base_material — a pesquisa vai priorizar essa " +
+    "fonte além de buscar outras. Cada sessão vale 20 XP e sobe de nível a cada 100 XP. O " +
+    "resultado de create_study_plan já traz o material pesquisado de cada tema — repasse esse " +
+    "conteúdo pro usuário de forma organizada (pode separar por tema), sem resumir demais: é " +
+    "material de estudo de verdade que ele vai usar, não só uma confirmação de que o plano foi " +
+    "criado. Se o usuário pedir o material de um tema específico depois (ex: 'manda o material " +
+    "de Docker', 'quais os princípios de X'), use get_study_material. Quando o usuário disser que " +
+    "terminou de estudar um tema, use complete_study_session (pelo nome do tema) para dar o XP e " +
+    "contar nível/sequência atualizados de forma comemorativa, tipo jogo. Use get_study_progress " +
+    "quando ele perguntar seu nível, XP, sequência (streak) ou progresso nos estudos. " +
     "Para todas as ferramentas de listagem, narre o " +
     "resultado em texto corrido e curto, não como uma lista técnica — e se a lista vier vazia, diga " +
     "isso de forma natural."
   );
 }
 
-async function runTool(toolCall: ChatCompletionMessageFunctionToolCall): Promise<string> {
+async function runTool(
+  toolCall: ChatCompletionMessageFunctionToolCall,
+  openai: OpenAI
+): Promise<string> {
   if (toolCall.function.name === "create_calendar_event") {
     return runCreateCalendarEvent(toolCall);
   }
@@ -366,7 +406,11 @@ async function runTool(toolCall: ChatCompletionMessageFunctionToolCall): Promise
   }
 
   if (toolCall.function.name === "create_study_plan") {
-    return runCreateStudyPlan(toolCall);
+    return runCreateStudyPlan(toolCall, openai);
+  }
+
+  if (toolCall.function.name === "get_study_material") {
+    return runGetStudyMaterial(toolCall, openai);
   }
 
   if (toolCall.function.name === "complete_study_session") {
@@ -633,13 +677,68 @@ function toSaoPauloDateOnly(instant: Date) {
   return `${local.getUTCFullYear()}-${pad(local.getUTCMonth() + 1)}-${pad(local.getUTCDate())}`;
 }
 
-async function runCreateStudyPlan(toolCall: ChatCompletionMessageFunctionToolCall): Promise<string> {
+const MAX_RESEARCHED_TOPICS = 5;
+
+/** Web-search-grounded research for one topic, via OpenAI's search-preview model. */
+async function researchTopic(
+  openai: OpenAI,
+  topic: string,
+  baseMaterial?: string
+): Promise<{ content: string; sources: StudySource[] }> {
+  const baseNote = baseMaterial
+    ? `O usuário indicou como material base: "${baseMaterial}". Priorize e cite essa fonte, além de outras que encontrar. `
+    : "";
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini-search-preview",
+      web_search_options: {},
+      messages: [
+        {
+          role: "user",
+          content:
+            `Pesquise na internet e monte um material de estudo sobre "${topic}". ${baseNote}` +
+            "Traga os principais princípios e conceitos-chave, explicados de forma direta e " +
+            "prática, e cite as fontes usadas. Responda em português, em texto corrido, sem ser " +
+            "excessivamente longo (uns 150-250 palavras).",
+        },
+      ],
+    });
+
+    const message = response.choices[0]?.message;
+    const content = message?.content?.trim();
+    const sources: StudySource[] = (message?.annotations ?? [])
+      .filter((a) => a.type === "url_citation")
+      .map((a) => ({ title: a.url_citation.title, url: a.url_citation.url }));
+
+    return {
+      content: content || "Não consegui pesquisar material sobre esse tema agora.",
+      sources,
+    };
+  } catch {
+    return { content: "Não consegui pesquisar material sobre esse tema agora.", sources: [] };
+  }
+}
+
+function formatMaterialSection(topic: string, material: { content: string; sources: StudySource[] }) {
+  const sourcesLine =
+    material.sources.length > 0
+      ? ` Fontes: ${material.sources.map((s) => `${s.title} (${s.url})`).join(", ")}.`
+      : "";
+  return `\n\n### Material: ${topic}\n${material.content}${sourcesLine}`;
+}
+
+async function runCreateStudyPlan(
+  toolCall: ChatCompletionMessageFunctionToolCall,
+  openai: OpenAI
+): Promise<string> {
   try {
     const args = JSON.parse(toolCall.function.arguments) as {
       topics: string[];
       sessions_per_week?: number;
       session_minutes?: number;
       weeks?: number;
+      base_material?: string;
     };
 
     const topics = (args.topics ?? []).map((t) => t.trim()).filter(Boolean);
@@ -706,13 +805,60 @@ async function runCreateStudyPlan(toolCall: ChatCompletionMessageFunctionToolCal
       ? `${createdEvents} evento(s) criados no Google Agenda.`
       : "O Google Agenda não está conectado, então as sessões foram salvas sem eventos na agenda.";
 
+    const uniqueTopics = [...new Set(topics)].slice(0, MAX_RESEARCHED_TOPICS);
+    const materials = await Promise.all(
+      uniqueTopics.map((topic) => researchTopic(openai, topic, args.base_material))
+    );
+    await Promise.all(
+      uniqueTopics.map((topic, i) =>
+        saveStudyMaterial({
+          planLabel,
+          topic,
+          content: materials[i].content,
+          sources: materials[i].sources,
+          baseMaterial: args.base_material ?? null,
+        })
+      )
+    );
+    const materialSections = uniqueTopics.map((topic, i) => formatMaterialSection(topic, materials[i])).join("");
+
     return (
       `Plano de estudos criado: ${totalSessions} sessões de ${sessionMinutes} min, ` +
       `${sessionsPerWeek}x por semana por ${weeks} semana(s), alternando entre ${topics.join(", ")}, ` +
-      `começando amanhã. Cada sessão vale 20 XP. ${calendarNote}`
+      `começando amanhã. Cada sessão vale 20 XP. ${calendarNote}` +
+      materialSections
     );
   } catch (error) {
     return `Erro ao criar plano de estudos: ${error instanceof Error ? error.message : "falha desconhecida"}`;
+  }
+}
+
+async function runGetStudyMaterial(
+  toolCall: ChatCompletionMessageFunctionToolCall,
+  openai: OpenAI
+): Promise<string> {
+  try {
+    const args = JSON.parse(toolCall.function.arguments) as {
+      topic: string;
+      base_material?: string;
+    };
+    const topic = args.topic.trim();
+    if (!topic) return "Erro: informe o tema para buscar o material.";
+
+    const existing = await findStudyMaterialByTopic(topic);
+    if (existing) return formatMaterialSection(existing.topic, existing).trim();
+
+    const material = await researchTopic(openai, topic, args.base_material);
+    await saveStudyMaterial({
+      topic,
+      content: material.content,
+      sources: material.sources,
+      baseMaterial: args.base_material ?? null,
+    });
+
+    return formatMaterialSection(topic, material).trim();
+  } catch (error) {
+    return `Erro ao buscar material: ${error instanceof Error ? error.message : "falha desconhecida"}`;
   }
 }
 
@@ -844,7 +990,7 @@ export async function runChat(
       conversation.push({
         role: "tool",
         tool_call_id: toolCall.id,
-        content: await runTool(toolCall),
+        content: await runTool(toolCall, openai),
       });
     }
 

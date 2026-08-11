@@ -3,6 +3,7 @@ import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/lib/supabase";
 import { AppSidebar } from "@/components/app-sidebar";
+import { trackActivityForSleepSuggestion } from "@/lib/activity-tracker";
 
 /** Gates /app, /despesas, /projetos, /saude behind auth — replaces proxy.ts's cookie-based redirect. */
 export function ProtectedLayout() {
@@ -17,6 +18,11 @@ export function ProtectedLayout() {
       .eq("user_id", user.id)
       .maybeSingle()
       .then(({ data }) => setGoogleCalendarConnected(Boolean(data)));
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    return trackActivityForSleepSuggestion();
   }, [user]);
 
   if (isLoading) return null;

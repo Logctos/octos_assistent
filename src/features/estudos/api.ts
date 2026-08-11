@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import type { StudySession } from "@/types";
+import type { StudyMaterial, StudySession, StudySource } from "@/types";
 
 const XP_PER_LEVEL = 100;
 
@@ -70,6 +70,48 @@ export async function completeStudySession(id: string): Promise<{ error: string 
 export async function deleteStudySession(id: string): Promise<void> {
   const { error } = await supabase.from("study_sessions").delete().eq("id", id);
   if (error) throw new Error(error.message);
+}
+
+export async function listStudyMaterials(): Promise<StudyMaterial[]> {
+  const { data } = await supabase
+    .from("study_materials")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  return (data ?? []) as StudyMaterial[];
+}
+
+/** Most recent material whose topic contains the query (case-insensitive), or null if none. */
+export async function findStudyMaterialByTopic(topic: string): Promise<StudyMaterial | null> {
+  const materials = await listStudyMaterials();
+  const needle = topic.trim().toLowerCase();
+  if (!needle) return materials[0] ?? null;
+
+  return materials.find((m) => m.topic.toLowerCase().includes(needle)) ?? null;
+}
+
+export async function saveStudyMaterial(input: {
+  planLabel?: string | null;
+  topic: string;
+  content: string;
+  sources: StudySource[];
+  baseMaterial?: string | null;
+}): Promise<{ error: string | null }> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Não autenticado" };
+
+  const { error } = await supabase.from("study_materials").insert({
+    user_id: user.id,
+    plan_label: input.planLabel ?? null,
+    topic: input.topic,
+    content: input.content,
+    sources: input.sources,
+    base_material: input.baseMaterial ?? null,
+  });
+
+  return { error: error?.message ?? null };
 }
 
 export interface StudyStats {

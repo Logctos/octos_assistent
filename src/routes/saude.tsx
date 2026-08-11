@@ -1,8 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import type { HealthLog } from "@/types";
-import { listHealthLogsForMonth, deleteHealthLog } from "@/features/saude/api";
+import {
+  listHealthLogsForMonth,
+  deleteHealthLog,
+  createWeeklyWeightReminder,
+  readWeeklyReminderStatus,
+  type WeeklyReminderStatus,
+} from "@/features/saude/api";
 import { HealthForm } from "@/features/saude/health-form";
+import { readSleepSuggestion } from "@/lib/activity-tracker";
+import { useAuth } from "@/lib/auth-context";
+import { getGoogleCalendarConnection } from "@/lib/google-calendar";
 
 function formatMonthLabel(month: string) {
   const [year, mon] = month.split("-").map(Number);
@@ -33,6 +42,7 @@ function formatHours(minutes: number) {
 }
 
 export function SaudePage() {
+  const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
@@ -40,6 +50,12 @@ export function SaudePage() {
   const month = monthParam && /^\d{4}-\d{2}$/.test(monthParam) ? monthParam : currentMonth;
 
   const [logs, setLogs] = useState<HealthLog[]>([]);
+  const [suggestedSleep] = useState(() => readSleepSuggestion());
+
+  const [calendarAccessToken, setCalendarAccessToken] = useState<string | null>(null);
+  const [reminder, setReminder] = useState<WeeklyReminderStatus>(() => readWeeklyReminderStatus());
+  const [reminderPending, setReminderPending] = useState(false);
+  const [reminderError, setReminderError] = useState<string | null>(null);
 
   const refetch = useCallback(() => {
     listHealthLogsForMonth(month).then(setLogs);
@@ -49,9 +65,31 @@ export function SaudePage() {
     refetch();
   }, [refetch]);
 
+  useEffect(() => {
+    if (!user) return;
+    getGoogleCalendarConnection(user.id).then((connection) => {
+      setCalendarAccessToken(connection?.access_token ?? null);
+    });
+  }, [user]);
+
   async function handleDelete(id: string) {
     await deleteHealthLog(id);
     refetch();
+  }
+
+  async function handleActivateReminder() {
+    if (!calendarAccessToken) return;
+    setReminderPending(true);
+    setReminderError(null);
+
+    const { error, eventLink } = await createWeeklyWeightReminder(calendarAccessToken);
+
+    setReminderPending(false);
+    if (error) {
+      setReminderError(error);
+      return;
+    }
+    setReminder({ active: true, eventLink });
   }
 
   const weights = logs.map((l) => l.weight_kg).filter((v): v is number => v !== null);
@@ -88,7 +126,45 @@ export function SaudePage() {
         </div>
       </div>
 
-      <HealthForm onCreated={refetch} />
+      <div className="hud-panel flex flex-wrap items-center justify-between gap-3 rounded-sm p-4">
+        <div className="flex flex-col gap-1">
+          <span className="hud-eyebrow">Lembrete semanal</span>
+          {reminder.active ? (
+            <p className="text-sm text-zinc-300">
+              Ativo — todo domingo às 9h no Google Agenda.{" "}
+              {reminder.eventLink && (
+                <a
+                  href={reminder.eventLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#00d4ff] hover:underline"
+                >
+                  Ver evento
+                </a>
+              )}
+            </p>
+          ) : (
+            <p className="text-sm text-zinc-400">
+              {calendarAccessToken
+                ? "Crie um evento recorrente para lembrar de lançar seu peso."
+                : "Conecte o Google Agenda (botão no menu) para ativar o lembrete."}
+            </p>
+          )}
+          {reminderError && <p className="text-xs text-red-400">{reminderError}</p>}
+        </div>
+        {!reminder.active && calendarAccessToken && (
+          <button
+            type="button"
+            onClick={handleActivateReminder}
+            disabled={reminderPending}
+            className="hud-button rounded-sm px-4 py-2 text-sm"
+          >
+            {reminderPending ? "Ativando…" : "Ativar lembrete"}
+          </button>
+        )}
+      </div>
+
+      <HealthForm onCreated={refetch} suggestedSleepHours={suggestedSleep} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="hud-panel flex flex-col gap-1 rounded-sm p-4">

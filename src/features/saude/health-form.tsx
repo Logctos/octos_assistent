@@ -8,7 +8,13 @@ function todayISO() {
   ).padStart(2, "0")}`;
 }
 
-export function HealthForm({ onCreated }: { onCreated?: () => void }) {
+export function HealthForm({
+  onCreated,
+  suggestedSleepHours,
+}: {
+  onCreated?: () => void;
+  suggestedSleepHours?: number | null;
+}) {
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -98,6 +104,7 @@ export function HealthForm({ onCreated }: { onCreated?: () => void }) {
             step="0.1"
             min="0"
             max="24"
+            defaultValue={suggestedSleepHours ?? undefined}
             disabled={isPending}
             className="hud-input rounded-sm px-3 py-2 text-base text-zinc-100 disabled:cursor-not-allowed sm:text-sm"
           />
@@ -107,6 +114,13 @@ export function HealthForm({ onCreated }: { onCreated?: () => void }) {
           {isPending ? "Adicionando…" : "Adicionar"}
         </button>
       </div>
+
+      {suggestedSleepHours != null && (
+        <p className="text-xs text-zinc-500">
+          Sono preenchido automaticamente com base no tempo desde seu último acesso ao app
+          ({suggestedSleepHours.toFixed(1)}h) — ajuste se não bater com a realidade.
+        </p>
+      )}
 
       {error && <p className="text-sm text-red-400">{error}</p>}
     </form>
