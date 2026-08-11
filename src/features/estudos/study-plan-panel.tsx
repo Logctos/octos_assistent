@@ -7,12 +7,37 @@ import {
   listStudySessions,
 } from "@/features/estudos/api";
 
-function formatSessionDate(dateOnly: string) {
-  return new Date(`${dateOnly}T00:00:00`).toLocaleDateString("pt-BR", {
-    weekday: "short",
-    day: "2-digit",
-    month: "short",
-  });
+const WEEKDAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
+/** YYYY-MM-DD of the Sunday that starts the week containing dateOnly. */
+function weekStartKey(dateOnly: string): string {
+  const date = new Date(`${dateOnly}T00:00:00`);
+  date.setDate(date.getDate() - date.getDay());
+  return date.toLocaleDateString("sv-SE");
+}
+
+function formatWeekRangeLabel(weekStart: string): string {
+  const start = new Date(`${weekStart}T00:00:00`);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  const fmt = (d: Date) => d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+  return `${fmt(start)} – ${fmt(end)}`;
+}
+
+/** Groups sessions into weeks (Sunday-start), each week split into 7 day buckets, chronological. */
+function groupIntoWeeks(sessions: StudySession[]): { weekStart: string; days: StudySession[][] }[] {
+  const weeks = new Map<string, StudySession[][]>();
+
+  for (const session of sessions) {
+    const key = weekStartKey(session.session_date);
+    if (!weeks.has(key)) weeks.set(key, Array.from({ length: 7 }, () => []));
+    const dayIndex = new Date(`${session.session_date}T00:00:00`).getDay();
+    weeks.get(key)![dayIndex].push(session);
+  }
+
+  return Array.from(weeks.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([weekStart, days]) => ({ weekStart, days }));
 }
 
 /** One card per topic, keeping only the most recent material (listStudyMaterials is already newest-first). */
@@ -125,32 +150,51 @@ export function StudyPlanPanel() {
         </p>
       </div>
 
-      <div className="hud-panel flex flex-col gap-2 rounded-sm p-4">
-        <span className="hud-eyebrow">Sessões pendentes ({pending.length})</span>
+      <div className="flex flex-col gap-3">
+        <span className="hud-eyebrow">Cronograma ({pending.length} sessões pendentes)</span>
         {pending.length === 0 ? (
-          <p className="py-4 text-center text-sm text-zinc-400">
-            Nenhuma sessão pendente — bom trabalho!
-          </p>
+          <div className="hud-panel rounded-sm p-4">
+            <p className="py-4 text-center text-sm text-zinc-400">
+              Nenhuma sessão pendente — bom trabalho!
+            </p>
+          </div>
         ) : (
-          <ul className="flex flex-col divide-y divide-white/10">
-            {pending.map((s) => (
-              <li key={s.id} className="flex items-center justify-between gap-3 py-3 text-sm">
-                <div>
-                  <p className="text-zinc-200">{s.topic}</p>
-                  <p className="text-xs text-zinc-400">
-                    {formatSessionDate(s.session_date)} · {s.duration_minutes} min · +{s.xp_value} XP
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleCancel(s.id)}
-                  className="shrink-0 text-xs text-red-400 hover:text-red-300"
-                >
-                  Cancelar
-                </button>
-              </li>
-            ))}
-          </ul>
+          groupIntoWeeks(pending).map(({ weekStart, days }) => (
+            <div key={weekStart} className="hud-panel flex flex-col gap-2 rounded-sm p-4">
+              <span className="text-xs font-semibold tracking-wide text-zinc-400">
+                Semana de {formatWeekRangeLabel(weekStart)}
+              </span>
+              <div className="grid grid-cols-7 gap-2">
+                {days.map((daySessions, dayIndex) => (
+                  <div key={dayIndex} className="flex flex-col gap-1.5">
+                    <span className="text-center text-[10px] font-semibold tracking-widest text-zinc-500 uppercase">
+                      {WEEKDAY_LABELS[dayIndex]}
+                    </span>
+                    <div className="flex flex-1 flex-col gap-1.5">
+                      {daySessions.map((s) => (
+                        <div
+                          key={s.id}
+                          className="flex flex-col gap-1 rounded-sm border border-[#00d4ff]/20 bg-[#00d4ff]/5 p-1.5 text-[11px]"
+                        >
+                          <p className="font-medium text-zinc-100">{s.topic}</p>
+                          <p className="text-zinc-500">
+                            {s.duration_minutes}min · +{s.xp_value} XP
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => handleCancel(s.id)}
+                            className="text-left text-red-400 hover:text-red-300"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))
         )}
       </div>
 
