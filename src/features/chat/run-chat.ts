@@ -728,6 +728,31 @@ function formatMaterialSection(topic: string, material: { content: string; sourc
   return `\n\n### Material: ${topic}\n${material.content}${sourcesLine}`;
 }
 
+/** Calendar event description: base info plus the researched material/links, when available. */
+function buildSessionDescription(
+  planLabel: string,
+  material: { content: string; sources: StudySource[] } | undefined
+) {
+  const base = `Sessão do plano de estudos gamificado (${planLabel}). Vale 20 XP.`;
+  if (!material) return base;
+
+  const sourcesBlock =
+    material.sources.length > 0
+      ? `\n\nFontes:\n${material.sources.map((s) => `- ${s.title}: ${s.url}`).join("\n")}`
+      : "";
+  return `${base}\n\n${material.content}${sourcesBlock}`;
+}
+
+/** Curriculum progression each topic's sessions cycle through, e.g. Docker → Introdução ao Docker, Fundamentos de Docker, Projetos com Docker, then repeats as "revisão". */
+const STUDY_PLAN_STAGES = ["Introdução ao", "Fundamentos de", "Projetos com"];
+
+function buildStageLabel(topic: string, occurrenceIndex: number): string {
+  const stage = STUDY_PLAN_STAGES[occurrenceIndex % STUDY_PLAN_STAGES.length];
+  const cycle = Math.floor(occurrenceIndex / STUDY_PLAN_STAGES.length);
+  const suffix = cycle > 0 ? ` (revisão ${cycle + 1})` : "";
+  return `${stage} ${topic}${suffix}`;
+}
+
 async function runCreateStudyPlan(
   toolCall: ChatCompletionMessageFunctionToolCall,
   openai: OpenAI
@@ -763,52 +788,14 @@ async function runCreateStudyPlan(
     const baseDay = todaySP.getUTCDate() + 1; // start tomorrow
 
     const planLabel = `Estudos: ${topics.join(", ")}`;
-    const sessionsToInsert: NewStudySession[] = [];
-    let createdEvents = 0;
 
-    for (let i = 0; i < totalSessions; i++) {
-      const topic = topics[i % topics.length];
-      const start = localSaoPauloDate(baseYear, baseMonth, baseDay + i * intervalDays, 19, 0);
-      const end = new Date(start.getTime() + sessionMinutes * 60_000);
-
-      let calendarLink: string | null = null;
-      if (connection) {
-        try {
-          const event = await createGoogleCalendarEvent(connection.access_token, {
-            summary: `Estudo: ${topic}`,
-            start: toSaoPauloIso(start),
-            end: toSaoPauloIso(end),
-            description: `Sessão do plano de estudos gamificado (${planLabel}). Vale ${20} XP.`,
-            colorId: EVENT_CATEGORY_COLOR.estudos,
-          });
-          calendarLink = event.htmlLink;
-          createdEvents++;
-        } catch {
-          // Segue criando as demais sessões mesmo se um evento específico falhar.
-        }
-      }
-
-      sessionsToInsert.push({
-        planLabel,
-        topic,
-        sessionDate: toSaoPauloDateOnly(start),
-        durationMinutes: sessionMinutes,
-        xpValue: 20,
-        calendarEventLink: calendarLink,
-      });
-    }
-
-    const { error } = await createStudySessions(sessionsToInsert);
-    if (error) return `Erro ao salvar o plano de estudos: ${error}`;
-
-    const calendarNote = connection
-      ? `${createdEvents} evento(s) criados no Google Agenda.`
-      : "O Google Agenda não está conectado, então as sessões foram salvas sem eventos na agenda.";
-
+    // Research each topic BEFORE creating events, so every calendar event already carries the
+    // principles/links for its topic instead of a generic placeholder description.
     const uniqueTopics = [...new Set(topics)].slice(0, MAX_RESEARCHED_TOPICS);
     const materials = await Promise.all(
       uniqueTopics.map((topic) => researchTopic(openai, topic, args.base_material))
     );
+    const materialByTopic = new Map(uniqueTopics.map((topic, i) => [topic, materials[i]]));
     await Promise.all(
       uniqueTopics.map((topic, i) =>
         saveStudyMaterial({
@@ -820,6 +807,51 @@ async function runCreateStudyPlan(
         })
       )
     );
+
+    const sessionsToInsert: NewStudySession[] = [];
+    let createdEvents = 0;
+
+    for (let i = 0; i < totalSessions; i++) {
+      const rawTopic = topics[i % topics.length];
+      const occurrenceIndex = Math.floor(i / topics.length);
+      const stageTopic = buildStageLabel(rawTopic, occurrenceIndex);
+      const start = localSaoPauloDate(baseYear, baseMonth, baseDay + i * intervalDays, 19, 0);
+      const end = new Date(start.getTime() + sessionMinutes * 60_000);
+
+      let calendarLink: string | null = null;
+      if (connection) {
+        try {
+          const event = await createGoogleCalendarEvent(connection.access_token, {
+            summary: `Estudo: ${stageTopic}`,
+            start: toSaoPauloIso(start),
+            end: toSaoPauloIso(end),
+            description: buildSessionDescription(planLabel, materialByTopic.get(rawTopic)),
+            colorId: EVENT_CATEGORY_COLOR.estudos,
+          });
+          calendarLink = event.htmlLink;
+          createdEvents++;
+        } catch {
+          // Segue criando as demais sessões mesmo se um evento específico falhar.
+        }
+      }
+
+      sessionsToInsert.push({
+        planLabel,
+        topic: stageTopic,
+        sessionDate: toSaoPauloDateOnly(start),
+        durationMinutes: sessionMinutes,
+        xpValue: 20,
+        calendarEventLink: calendarLink,
+      });
+    }
+
+    const { error } = await createStudySessions(sessionsToInsert);
+    if (error) return `Erro ao salvar o plano de estudos: ${error}`;
+
+    const calendarNote = connection
+      ? `${createdEvents} evento(s) criados no Google Agenda, já com o material de estudo na descrição.`
+      : "O Google Agenda não está conectado, então as sessões foram salvas sem eventos na agenda.";
+
     const materialSections = uniqueTopics.map((topic, i) => formatMaterialSection(topic, materials[i])).join("");
 
     return (
