@@ -53,6 +53,7 @@ export function ChatPanel({
   const {
     isSupported: isSpeechOutputSupported,
     isSpeaking,
+    lastError: lastSpeechError,
     speak,
     cancel: cancelSpeech,
   } = useSpeechSynthesis();
@@ -187,6 +188,9 @@ export function ChatPanel({
             <span className="text-xs text-zinc-400">
               {apiKey ? "Chave da OpenAI configurada" : "Chave da OpenAI não configurada"} ·{" "}
               {messages.length} mensagens
+              {lastSpeechError && (
+                <span className="text-red-400"> · erro de voz: {lastSpeechError}</span>
+              )}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -198,6 +202,15 @@ export function ChatPanel({
                 className="hud-button rounded-sm px-2 py-1 text-xs"
               >
                 {voiceEnabled ? "🔊" : "🔇"}
+              </button>
+            )}
+            {isSpeechOutputSupported && (
+              <button
+                type="button"
+                onClick={() => speak("Teste de voz, um dois três.")}
+                className="hud-button rounded-sm px-2 py-1 text-xs"
+              >
+                Testar voz
               </button>
             )}
             {isSpeechOutputSupported && isSpeechInputSupported && (

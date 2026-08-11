@@ -20,6 +20,7 @@ function pickPortugueseVoice(): SpeechSynthesisVoice | null {
 export function useSpeechSynthesis() {
   const [isSupported] = useState(() => "speechSynthesis" in window);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [lastError, setLastError] = useState<string | null>(null);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const voiceRef = useRef<SpeechSynthesisVoice | null>(null);
 
@@ -60,21 +61,33 @@ export function useSpeechSynthesis() {
   function speak(text: string, lang = "pt-BR", onEnd?: () => void) {
     if (!isSupported || !text) return;
 
+    setLastError(null);
     window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = lang;
-    if (!voiceRef.current) voiceRef.current = pickPortugueseVoice();
-    if (voiceRef.current) utterance.voice = voiceRef.current;
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => {
-      setIsSpeaking(false);
-      onEnd?.();
-    };
-    utterance.onerror = () => setIsSpeaking(false);
-    // Some Chrome/Android builds garbage-collect the utterance mid-speech if nothing
-    // outside this function keeps a reference to it, cutting audio off randomly.
-    utteranceRef.current = utterance;
-    window.speechSynthesis.speak(utterance);
+
+    function doSpeak() {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = lang;
+      if (!voiceRef.current) voiceRef.current = pickPortugueseVoice();
+      if (voiceRef.current) utterance.voice = voiceRef.current;
+      utterance.onstart = () => setIsSpeaking(true);
+      utterance.onend = () => {
+        setIsSpeaking(false);
+        onEnd?.();
+      };
+      utterance.onerror = (e) => {
+        setIsSpeaking(false);
+        setLastError(e.error || "erro desconhecido");
+      };
+      // Some Chrome/Android builds garbage-collect the utterance mid-speech if nothing
+      // outside this function keeps a reference to it, cutting audio off randomly.
+      utteranceRef.current = utterance;
+      window.speechSynthesis.speak(utterance);
+    }
+
+    // iOS Safari can silently swallow speak() when it's called synchronously right after
+    // cancel() — WebKit's internal speech queue hasn't actually cleared yet. A short delay
+    // lets that settle first; harmless on browsers that don't need it.
+    setTimeout(doSpeak, 150);
   }
 
   function cancel() {
@@ -82,5 +95,5 @@ export function useSpeechSynthesis() {
     setIsSpeaking(false);
   }
 
-  return { isSupported, isSpeaking, speak, cancel };
+  return { isSupported, isSpeaking, lastError, speak, cancel };
 }
