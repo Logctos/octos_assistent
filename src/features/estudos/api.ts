@@ -72,6 +72,52 @@ export async function deleteStudySession(id: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+export interface DeleteStudyPlanResult {
+  error: string | null;
+  planLabel: string | null;
+  deletedCount: number;
+}
+
+/**
+ * Deletes every session belonging to the plan matched by query (against plan_label or topic).
+ * Leaves study_materials untouched — the researched content stays useful even without the
+ * schedule, same as the per-session "Cancelar" button never touched materials either.
+ */
+export async function deleteStudyPlan(query: string): Promise<DeleteStudyPlanResult> {
+  const sessions = await listStudySessions();
+  const needle = query.trim().toLowerCase();
+
+  const matchingLabels = [
+    ...new Set(
+      sessions
+        .filter(
+          (s) =>
+            s.plan_label.toLowerCase().includes(needle) || s.topic.toLowerCase().includes(needle)
+        )
+        .map((s) => s.plan_label)
+    ),
+  ];
+
+  if (matchingLabels.length === 0) {
+    return { error: `Nenhum plano de estudos encontrado para "${query}".`, planLabel: null, deletedCount: 0 };
+  }
+  if (matchingLabels.length > 1) {
+    return {
+      error: `Mais de um plano bate com "${query}": ${matchingLabels.join(" | ")}. Seja mais específico.`,
+      planLabel: null,
+      deletedCount: 0,
+    };
+  }
+
+  const planLabel = matchingLabels[0];
+  const deletedCount = sessions.filter((s) => s.plan_label === planLabel).length;
+
+  const { error } = await supabase.from("study_sessions").delete().eq("plan_label", planLabel);
+  if (error) return { error: error.message, planLabel: null, deletedCount: 0 };
+
+  return { error: null, planLabel, deletedCount };
+}
+
 export async function listStudyMaterials(): Promise<StudyMaterial[]> {
   const { data } = await supabase
     .from("study_materials")

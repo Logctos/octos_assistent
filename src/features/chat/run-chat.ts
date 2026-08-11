@@ -18,6 +18,7 @@ import {
   completeStudySession,
   computeStudyStats,
   createStudySessions,
+  deleteStudyPlan,
   findPendingSessionByTopic,
   findStudyMaterialByTopic,
   listStudySessions,
@@ -275,6 +276,26 @@ const TOOLS: ChatCompletionTool[] = [
   {
     type: "function",
     function: {
+      name: "delete_study_plan",
+      description:
+        "Apaga um plano de estudos inteiro (todas as sessões, pendentes e concluídas). Use " +
+        "quando o usuário pedir para cancelar, apagar ou excluir um plano/cronograma de estudos. " +
+        "Não apaga o material já pesquisado, só o cronograma de sessões.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description: "Tema ou nome do plano a apagar, ex: \"Docker\" ou \"React e Inglês\".",
+          },
+        },
+        required: ["query"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "get_study_progress",
       description:
         "Consulta o progresso do plano de estudos: XP total, nível, sequência de dias (streak) e " +
@@ -404,7 +425,9 @@ function buildSystemPrompt() {
     "de Docker', 'quais os princípios de X'), use get_study_material. Quando o usuário disser que " +
     "terminou de estudar um tema, use complete_study_session (pelo nome do tema) para dar o XP e " +
     "contar nível/sequência atualizados de forma comemorativa, tipo jogo. Use get_study_progress " +
-    "quando ele perguntar seu nível, XP, sequência (streak) ou progresso nos estudos. " +
+    "quando ele perguntar seu nível, XP, sequência (streak) ou progresso nos estudos. Se o usuário " +
+    "pedir para cancelar, apagar ou excluir um plano/cronograma de estudos, use delete_study_plan " +
+    "(pelo tema ou nome do plano) — isso apaga todas as sessões daquele plano de uma vez. " +
     "Sempre que o usuário contar o que estudou ou trabalhou naquele dia — falando ou escrevendo, " +
     "mesmo sem pedir explicitamente para guardar — use save_daily_summary para registrar no " +
     "diário dele. Se ele perguntar o que já estudou/fez, use list_daily_summaries. " +
@@ -464,6 +487,10 @@ async function runTool(
 
   if (toolCall.function.name === "complete_study_session") {
     return runCompleteStudySession(toolCall);
+  }
+
+  if (toolCall.function.name === "delete_study_plan") {
+    return runDeleteStudyPlan(toolCall);
   }
 
   if (toolCall.function.name === "get_study_progress") {
@@ -1032,6 +1059,22 @@ async function runCompleteStudySession(
     );
   } catch (error) {
     return `Erro ao concluir sessão: ${error instanceof Error ? error.message : "falha desconhecida"}`;
+  }
+}
+
+async function runDeleteStudyPlan(
+  toolCall: ChatCompletionMessageFunctionToolCall
+): Promise<string> {
+  try {
+    const args = JSON.parse(toolCall.function.arguments || "{}") as { query?: string };
+    if (!args.query) return "Erro: diga o tema ou nome do plano de estudos a apagar.";
+
+    const { error, planLabel, deletedCount } = await deleteStudyPlan(args.query);
+    if (error) return `Erro ao apagar o plano: ${error}`;
+
+    return `Plano "${planLabel}" apagado — ${deletedCount} sessão(ões) removida(s).`;
+  } catch (error) {
+    return `Erro ao apagar o plano: ${error instanceof Error ? error.message : "falha desconhecida"}`;
   }
 }
 
