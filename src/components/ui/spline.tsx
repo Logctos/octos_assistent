@@ -1,10 +1,19 @@
 "use client";
 
 import { Suspense, lazy } from "react";
+import type { Application } from "@splinetool/runtime";
 
 const Spline = lazy(() => import("@splinetool/react-spline"));
 
-export function SplineScene({ scene, className }: { scene: string; className?: string }) {
+export function SplineScene({
+  scene,
+  className,
+  onLoad,
+}: {
+  scene: string;
+  className?: string;
+  onLoad?: (app: Application) => void;
+}) {
   return (
     <Suspense
       fallback={
@@ -13,7 +22,7 @@ export function SplineScene({ scene, className }: { scene: string; className?: s
         </div>
       }
     >
-      <Spline scene={scene} className={className} />
+      <Spline scene={scene} className={className} onLoad={onLoad} />
     </Suspense>
   );
 }
