@@ -11,6 +11,7 @@ import type { NewsItem } from "@/lib/tech-news";
 import { runChat } from "@/features/chat/run-chat";
 import { loadChatHistory, saveChatMessage } from "@/features/chat/api";
 import { NextStudyCard } from "@/features/estudos/next-study-card";
+import { HealthSummaryCard } from "@/features/saude/health-summary-card";
 
 const API_KEY_STORAGE_KEY = "octos:openai-api-key";
 const VOICE_ENABLED_STORAGE_KEY = "octos:voice-enabled";
@@ -321,6 +322,7 @@ export function ChatPanel({
           <AgentsTile agents={agents} />
           <ActivitiesTile activities={activities} />
           <NextStudyCard />
+          <HealthSummaryCard />
         </div>
       </div>
 

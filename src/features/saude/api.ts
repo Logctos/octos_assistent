@@ -17,6 +17,20 @@ export async function listHealthLogsForMonth(month: string): Promise<HealthLog[]
   return (data ?? []) as HealthLog[];
 }
 
+/** Logs from the last N days (today inclusive), across month boundaries — for home-screen summaries. */
+export async function listRecentHealthLogs(days: number): Promise<HealthLog[]> {
+  const start = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  const startDate = start.toISOString().slice(0, 10);
+
+  const { data } = await supabase
+    .from("health_logs")
+    .select("*")
+    .gte("log_date", startDate)
+    .order("log_date", { ascending: false });
+
+  return (data ?? []) as HealthLog[];
+}
+
 export async function createHealthLog(input: {
   logDate: string;
   weightKg: number | null;

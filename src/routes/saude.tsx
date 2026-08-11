@@ -12,6 +12,7 @@ import { HealthForm } from "@/features/saude/health-form";
 import { readSleepSuggestion } from "@/lib/activity-tracker";
 import { useAuth } from "@/lib/auth-context";
 import { getGoogleCalendarConnection } from "@/lib/google-calendar";
+import { estimateTrainingCalories } from "@/lib/health-metrics";
 
 function formatMonthLabel(month: string) {
   const [year, mon] = month.split("-").map(Number);
@@ -102,6 +103,16 @@ export function SaudePage() {
   const totalActivity = activityMinutes.reduce((sum, v) => sum + v, 0);
   const avgSleep = average(sleepHours);
 
+  /** Falls back to the period's average weight when a training entry has no weigh-in of its own. */
+  function caloriesForLog(log: HealthLog): number | null {
+    if (log.activity_minutes === null) return null;
+    const weight = log.weight_kg ?? avgWeight;
+    if (weight === null) return null;
+    return estimateTrainingCalories(log.activity_minutes, weight);
+  }
+
+  const totalCalories = logs.reduce((sum, log) => sum + (caloriesForLog(log) ?? 0), 0);
+
   return (
     <div className="flex w-full max-w-2xl flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -166,7 +177,7 @@ export function SaudePage() {
 
       <HealthForm onCreated={refetch} suggestedSleepHours={suggestedSleep} />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div className="hud-panel flex flex-col gap-1 rounded-sm p-4">
           <span className="hud-eyebrow">Peso médio</span>
           <span className="font-outfit text-xl font-semibold text-zinc-50">
@@ -174,9 +185,15 @@ export function SaudePage() {
           </span>
         </div>
         <div className="hud-panel flex flex-col gap-1 rounded-sm p-4">
-          <span className="hud-eyebrow">Atividade física</span>
+          <span className="hud-eyebrow">Treino (jiu-jitsu)</span>
           <span className="font-outfit text-xl font-semibold text-zinc-50">
             {totalActivity > 0 ? formatHours(totalActivity) : "—"}
+          </span>
+        </div>
+        <div className="hud-panel flex flex-col gap-1 rounded-sm p-4">
+          <span className="hud-eyebrow">Calorias (est.)</span>
+          <span className="font-outfit text-xl font-semibold text-zinc-50">
+            {totalCalories > 0 ? `~${totalCalories} kcal` : "—"}
           </span>
         </div>
         <div className="hud-panel flex flex-col gap-1 rounded-sm p-4">
@@ -205,7 +222,10 @@ export function SaudePage() {
                     {log.weight_kg !== null && (log.activity_minutes !== null || log.sleep_hours !== null)
                       ? " · "
                       : ""}
-                    {log.activity_minutes !== null && `${log.activity_minutes} min de atividade`}
+                    {log.activity_minutes !== null &&
+                      `${log.activity_minutes} min de treino${
+                        caloriesForLog(log) !== null ? ` (~${caloriesForLog(log)} kcal)` : ""
+                      }`}
                     {log.activity_minutes !== null && log.sleep_hours !== null ? " · " : ""}
                     {log.sleep_hours !== null && `${log.sleep_hours} h de sono`}
                   </p>
