@@ -81,13 +81,20 @@ export async function listStudyMaterials(): Promise<StudyMaterial[]> {
   return (data ?? []) as StudyMaterial[];
 }
 
-/** Most recent material whose topic contains the query (case-insensitive), or null if none. */
+/**
+ * Most recent material whose topic matches the query (case-insensitive, either direction —
+ * a session topic like "Introdução ao Docker" needs to match a material topic of just "Docker").
+ */
 export async function findStudyMaterialByTopic(topic: string): Promise<StudyMaterial | null> {
   const materials = await listStudyMaterials();
   const needle = topic.trim().toLowerCase();
   if (!needle) return materials[0] ?? null;
 
-  return materials.find((m) => m.topic.toLowerCase().includes(needle)) ?? null;
+  return (
+    materials.find(
+      (m) => needle.includes(m.topic.toLowerCase()) || m.topic.toLowerCase().includes(needle)
+    ) ?? null
+  );
 }
 
 export async function saveStudyMaterial(input: {
